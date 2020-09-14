@@ -21,6 +21,29 @@
 #include "usart.h"
 
 /* USER CODE BEGIN 0 */
+void __io_putchar(int ch){
+#if DEBUG_TO_CONSOLE
+	// Wait until all data have been transmitted
+	while(!READ_BIT(USART2->ISR, USART_ISR_TXE));
+	// Write data to transmit register
+	WRITE_REG(USART2->TDR, ch);
+	// Wait until transmission completed
+	while(!READ_BIT(USART2->ISR, USART_ISR_TC));
+#endif
+}
+
+void __io_getchar(void){
+	// NOT IMPLEMENTED
+}
+
+void startupPrint(void){
+	printf("\r\n");
+	printf("+==============================================================+\r\n");
+	printf("|%62.62s|\r\n", DESCRIPTION);
+	printf("+--------------------+--------------------+--------------------+\r\n");
+	printf("+ %18.18s | HW: %14.14s | VER.%14.14s |\r\n", "Rafael de la Rosa", HW, FIRM_VERSION);
+	printf("+==============================================================+\r\n\r\n");
+}
 
 /* USER CODE END 0 */
 
@@ -48,7 +71,7 @@ void MX_USART2_UART_Init(void)
   GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  USART_InitStruct.BaudRate = 115200;
+  USART_InitStruct.BaudRate = 921600;
   USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
   USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
   USART_InitStruct.Parity = LL_USART_PARITY_NONE;

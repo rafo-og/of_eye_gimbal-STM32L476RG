@@ -48,7 +48,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdbool.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -70,7 +71,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void startupPrint();
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -101,6 +102,11 @@ void Error_Handler(void);
                                                                  0 bit  for subpriority */
 #endif
 /* USER CODE BEGIN Private defines */
+
+#define DEBUG_TO_CONSOLE true
+#define HW "STM32L476RG"
+#define DESCRIPTION "Gimbal driven by an optical flow system"
+#define FIRM_VERSION "1.0"
 
 /* USER CODE END Private defines */
 
