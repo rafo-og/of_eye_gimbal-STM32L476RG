@@ -108,6 +108,8 @@ void startupPrint();
 #define DESCRIPTION "Gimbal driven by an optical flow system"
 #define FIRM_VERSION "1.0"
 
+#define _(a) 	#a
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

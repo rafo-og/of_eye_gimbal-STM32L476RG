@@ -102,7 +102,7 @@ int main(void)
   startupPrint();
 
   adns2610_init();
-  adns2610_start();
+  //adns2610_start();
 
   /* USER CODE END 2 */
 
@@ -113,6 +113,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  printf("PIXEL SUM 0x%02X\r\n", adns2610_readRegister(ADNS2610_RIGHT, ADNS_2610_PIXEL_SUM));
+	  LL_mDelay(1000);
   }
   /* USER CODE END 3 */
 }
