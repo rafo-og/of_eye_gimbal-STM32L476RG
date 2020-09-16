@@ -60,7 +60,6 @@ typedef enum {
 #define INV_PROD_Msk		(0xFU << INV_PROD_Pos)
 #define INV_PROD			INV_PROD_Msk
 
-
 void adns2610_init(void);
 void adns2610_start(void);
 uint8_t adns2610_readRegister(Device dev, uint8_t reg);
