@@ -1,4 +1,5 @@
 "Core/Src/adns-2610.o"
+"Core/Src/eyes.o"
 "Core/Src/gpio.o"
 "Core/Src/main.o"
 "Core/Src/spi.o"
