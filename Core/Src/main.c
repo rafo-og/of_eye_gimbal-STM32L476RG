@@ -26,7 +26,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "adns-2610.h"
+#include "eyes.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -102,10 +102,8 @@ int main(void)
 
   startupPrint();
 
-  adns2610_init(ADNS2610_RIGHT);
-//  adns2610_readFrameSync(ADNS2610_RIGHT, a);
-//  printf("COMPLETED\r\n");
-  adns2610_start();
+  eyes_init();
+  eyes_start();
 
   /* USER CODE END 2 */
 

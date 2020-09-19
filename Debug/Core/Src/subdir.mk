@@ -4,7 +4,7 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../Core/Src/adns-2610.c \
+../Core/Src/adns2610.c \
 ../Core/Src/eyes.c \
 ../Core/Src/gpio.c \
 ../Core/Src/main.c \
@@ -17,7 +17,7 @@ C_SRCS += \
 ../Core/Src/usart.c 
 
 OBJS += \
-./Core/Src/adns-2610.o \
+./Core/Src/adns2610.o \
 ./Core/Src/eyes.o \
 ./Core/Src/gpio.o \
 ./Core/Src/main.o \
@@ -30,7 +30,7 @@ OBJS += \
 ./Core/Src/usart.o 
 
 C_DEPS += \
-./Core/Src/adns-2610.d \
+./Core/Src/adns2610.d \
 ./Core/Src/eyes.d \
 ./Core/Src/gpio.d \
 ./Core/Src/main.d \
@@ -44,8 +44,8 @@ C_DEPS += \
 
 
 # Each subdirectory must supply rules for building sources it contributes
-Core/Src/adns-2610.o: ../Core/Src/adns-2610.c
-	arm-none-eabi-gcc "$<" -mcpu=cortex-m4 -std=gnu11 -g3 '-DHSE_VALUE=8000000' '-DMSI_VALUE=4000000' '-DLSI_VALUE=32000' '-DHSE_STARTUP_TIMEOUT=100' '-DHSI_VALUE=16000000' -DDEBUG '-DLSE_STARTUP_TIMEOUT=5000' '-DLSE_VALUE=32768' '-DDATA_CACHE_ENABLE=1' '-DVDD_VALUE=3300' '-DINSTRUCTION_CACHE_ENABLE=1' '-DEXTERNALSAI2_CLOCK_VALUE=2097000' -DSTM32L476xx -DUSE_FULL_LL_DRIVER '-DEXTERNALSAI1_CLOCK_VALUE=2097000' '-DPREFETCH_ENABLE=1' -c -I../Core/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32L4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Core/Src/adns-2610.d" -MT"$@" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "$@"
+Core/Src/adns2610.o: ../Core/Src/adns2610.c
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m4 -std=gnu11 -g3 '-DHSE_VALUE=8000000' '-DMSI_VALUE=4000000' '-DLSI_VALUE=32000' '-DHSE_STARTUP_TIMEOUT=100' '-DHSI_VALUE=16000000' -DDEBUG '-DLSE_STARTUP_TIMEOUT=5000' '-DLSE_VALUE=32768' '-DDATA_CACHE_ENABLE=1' '-DVDD_VALUE=3300' '-DINSTRUCTION_CACHE_ENABLE=1' '-DEXTERNALSAI2_CLOCK_VALUE=2097000' -DSTM32L476xx -DUSE_FULL_LL_DRIVER '-DEXTERNALSAI1_CLOCK_VALUE=2097000' '-DPREFETCH_ENABLE=1' -c -I../Core/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32L4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Core/Src/adns2610.d" -MT"$@" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "$@"
 Core/Src/eyes.o: ../Core/Src/eyes.c
 	arm-none-eabi-gcc "$<" -mcpu=cortex-m4 -std=gnu11 -g3 '-DHSE_VALUE=8000000' '-DMSI_VALUE=4000000' '-DLSI_VALUE=32000' '-DHSE_STARTUP_TIMEOUT=100' '-DHSI_VALUE=16000000' -DDEBUG '-DLSE_STARTUP_TIMEOUT=5000' '-DLSE_VALUE=32768' '-DDATA_CACHE_ENABLE=1' '-DVDD_VALUE=3300' '-DINSTRUCTION_CACHE_ENABLE=1' '-DEXTERNALSAI2_CLOCK_VALUE=2097000' -DSTM32L476xx -DUSE_FULL_LL_DRIVER '-DEXTERNALSAI1_CLOCK_VALUE=2097000' '-DPREFETCH_ENABLE=1' -c -I../Core/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32L4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Core/Src/eyes.d" -MT"$@" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "$@"
 Core/Src/gpio.o: ../Core/Src/gpio.c

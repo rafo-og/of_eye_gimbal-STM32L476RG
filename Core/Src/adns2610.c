@@ -5,54 +5,31 @@
  *      Author: deros
  */
 
-#include "adns-2610.h"
+#include <adns2610.h>
 
 // Private defines
 #define FULL_DUPLEX_SPI true
 
 // Global variables declared in adns-2610.h
 extern pixelTypeDef pixBuf_adns_right [2][PIXEL_QTY];
-extern uint8_t currentFrame;
-extern uint8_t pastFrame;
 
 // Private macros
 #define GET_SPI_PERIPH(Device, PeriphPtr)	 (PeriphPtr = Device == 0 ? SPI2 : SPI3)
 #define GET_DEV_NAME(dev, str)	(str = dev == ADNS2610_RIGHT ? "ADNS2610_RIGHT" : "ADNS2610_LEFT")
-#define SWITCH_FRAME(current, past)	{uint8_t temp; temp = past; past = current; current = temp;}
-
-// Private variables
-typedef enum adns2610_state{
-	SENSOR_RESET,
-	TRIGGER_FRAME,
-	READING_FRAME,
-	REQ_READING_FRAME,
-	PROCESSING
-} adns2610_state_TypeDef;
 
 // Private static variables
 static SPI_TypeDef * SPIx;
-static adns2610_state_TypeDef FSM_state;
 
 // Private function prototypes
 void adns2610_resetCOM(Device dev);
 void adns2610_config(Device dev);
-void adns2610_configureTIM();
 void adns2610_configureSPI(Device dev);
-void adns2610_receiveByte(Device dev, uint8_t* value);
-void adns2610_sendByte(Device dev, uint8_t value);
-void adns2610_checkPixel(pixelTypeDef* Pixel, uint16_t* idx);
-void printImage(pixelTypeDef frame[]);
-
-__STATIC_INLINE void adns2610_wait(uint32_t useconds);
-__STATIC_INLINE void adns2610_stopWait(void);
 
 /**
- * @brief Initialize the ADNS-2610
+ * @brief Initialize the ADNS2610 sensor
+ * @param dev Device address, it refers to SPI peripheral where the sensor is connected
  */
 void adns2610_init(Device dev){
-	// Configure the timer to read the frames continuously
-	adns2610_configureTIM();
-
 	// Configure the SPI peripherals for each sensor
 	adns2610_configureSPI(dev);
 
@@ -61,107 +38,11 @@ void adns2610_init(Device dev){
 
 	// Configure sensors
 	adns2610_config(dev);
-
-	FSM_state = RESET;
-	currentFrame = 0;
-	pastFrame = 1;
 }
-
-__STATIC_INLINE void adns2610_wait(uint32_t useconds){
-	// Disable update interrupt generation
-	SET_BIT(TIM1->CR1, TIM_CR1_URS);
-	// Set time to wait
-	TIM1->ARR = useconds;
-	// Update the prescaler and counter registers
-	SET_BIT(TIM1->EGR, TIM_EGR_UG);
-	// Enable update interrupt generation
-	CLEAR_BIT(TIM1->CR1, TIM_CR1_URS);
-	// Enable and start timer
-	SET_BIT(TIM1->CR1, TIM_CR1_CEN);
-}
-
-__STATIC_INLINE void adns2610_stopWait(void){
-	// Enable and start timer
-	CLEAR_BIT(TIM1->CR1, TIM_CR1_CEN);
-}
-
-void adns2610_start(void){
-	if(FSM_state == SENSOR_RESET){
-		FSM_state = TRIGGER_FRAME;
-		adns2610_wait(1);
-	}
-}
-
-void adns2610_stop(void){
-	if(FSM_state != SENSOR_RESET){
-		FSM_state = SENSOR_RESET;
-		adns2610_wait(UINT32_MAX);
-	}
-}
-
-void adns2610_processFSM(void){
-	static uint16_t frameIdx = 0;
-//	static uint8_t collisionFlag = 0;
-
-	switch(FSM_state){
-	case SENSOR_RESET:
-//		if(collisionFlag) goto collisionError; else collisionFlag = 1;
-		frameIdx = 0;
-		adns2610_stopWait();
-//		collisionFlag = 0;
-		return;
-	case TRIGGER_FRAME:
-		adns2610_stopWait();
-		frameIdx = 0;
-//		if(collisionFlag) goto collisionError; else collisionFlag = 1;
-		FSM_state = REQ_READING_FRAME;
-		adns2610_writeRegister(ADNS2610_RIGHT, ADNS2610_PIXEL_DATA_REG, 0x01);
-//		collisionFlag = 0;
-		adns2610_wait(ADNS2610_TIM_BTW_WR);
-		return;
-	case REQ_READING_FRAME:
-		adns2610_stopWait();
-//		if(collisionFlag) goto collisionError; else collisionFlag = 1;
-		FSM_state = READING_FRAME;
-		adns2610_sendByte(ADNS2610_RIGHT, ADNS2610_PIXEL_DATA_REG);
-//		collisionFlag = 0;
-		adns2610_wait(ADNS2610_TIM_TO_RD);
-		return;
-	case READING_FRAME:
-		adns2610_stopWait();
-//		if(collisionFlag) goto collisionError; else collisionFlag = 1;
-		adns2610_receiveByte(ADNS2610_RIGHT, &(pixBuf_adns_right[currentFrame][frameIdx]));
-
-		adns2610_checkPixel(&(pixBuf_adns_right[currentFrame][frameIdx]), &frameIdx);
-
-		if(frameIdx == 324){
-			FSM_state = PROCESSING;
-			frameIdx = 0;
-		}
-		else{
-			FSM_state = REQ_READING_FRAME;
-		}
-//		collisionFlag = 0;
-		adns2610_wait(ADNS2610_TIM_BTW_RD);
-		return;
-	case PROCESSING:
-		adns2610_stopWait();
-//		if(collisionFlag) goto collisionError; else collisionFlag = 1;
-		FSM_state = TRIGGER_FRAME;
-		printImage(pixBuf_adns_right[currentFrame]);
-		SWITCH_FRAME(currentFrame, pastFrame);
-//		collisionFlag = 0;
-		printf("PROCESSING\r\n");
-		adns2610_wait(1);
-		return;
-	}
-
-//	collisionError:
-//		printf("COLISSION ERROR!!\r\n");
-//		adns2610_stopWait();
-//		while(1);
-}
-
+/**
+ * @brief Configure the SPI module pointed by Device argument
+ * @param dev Device address, it refers to SPI peripheral where the sensor is connected
+ */
 void adns2610_configureSPI(Device dev){
 	GET_SPI_PERIPH(dev, SPIx);
 	// RX FIFO threshold adjusted to 8-bit word
@@ -169,31 +50,11 @@ void adns2610_configureSPI(Device dev){
 	// Enable SPI
 	SET_BIT(SPIx->CR1, SPI_CR1_SPE);
 }
-
-void adns2610_configureTIM(){
-	// TIM1 prescalers has been configured to count microseconds
-	uint32_t temp = TIM1->CR1;
-
-	// Disable update interrupt
-	CLEAR_BIT(TIM1->DIER, TIM_DIER_UIE);
-	// Modify CR1 register
-	MODIFY_REG(temp, ~(TIM_CR1_UDIS), TIM_CR1_URS);
-	TIM1->CR1 = temp;
-	// Set interrupt interval
-	TIM1->ARR = ADNS2610_TIM_TO_RD;
-	// Update the prescaler and counter registers
-	SET_BIT(TIM1->EGR, TIM_EGR_UG);
-	// Clear pending interrupt flag
-	CLEAR_BIT(TIM1->SR, TIM_SR_UIF);
-	// Enable update interrupt generation
-	CLEAR_BIT(TIM1->CR1, TIM_CR1_URS);
-	// Enable update interrupt
-	SET_BIT(TIM1->DIER, TIM_DIER_UIE);
-	// Configure NVIC to handle TIM1 update interrupt
-	NVIC_SetPriority(TIM1_UP_TIM16_IRQn, 0);
-	NVIC_EnableIRQ(TIM1_UP_TIM16_IRQn);
-}
-
+/**
+ * @brief Reset the ADNS2610 serial port. It needs to be done at the beginning to establish the communication
+ * 		  correctly
+ * @param dev Device address, it refers to SPI peripheral where the sensor is connected
+ */
 void adns2610_resetCOM(Device dev){
 
 	GET_SPI_PERIPH(dev, SPIx);
@@ -209,7 +70,10 @@ void adns2610_resetCOM(Device dev){
 	while((READ_BIT(SPIx->SR, SPI_SR_FTLVL)) | (READ_BIT(SPIx->SR, SPI_SR_FRLVL)) | (READ_BIT(SPIx->SR, SPI_SR_BSY)));
 	LL_mDelay(100);
 }
-
+/**
+ * @brief Configure the ADNS2610 internal register. Set always awake and check the inverse product ID register
+ * @param dev Device address, it refers to SPI peripheral where the sensor is connected
+ */
 void adns2610_config(Device dev){
 	// ADNS-2610 configuration
 	char * devName;
@@ -235,7 +99,12 @@ void adns2610_config(Device dev){
 
 	printf("\r\n");
 }
-
+/**
+ * @brief Read a ADNS2610 internal register by polling
+ * @param dev Device address, it refers to SPI peripheral where the sensor is connected
+ * @param reg Internal register ADDRESS, see adns2610.h
+ * @return Register value
+ */
 uint8_t adns2610_readRegister(Device dev, uint8_t reg){
 
 	uint8_t value;
@@ -263,7 +132,12 @@ uint8_t adns2610_readRegister(Device dev, uint8_t reg){
 
 	#endif
 }
-
+/**
+ * @brief Write a ADNS2610 internal register by polling
+ * @param dev Device address, it refers to SPI peripheral where the sensor is connected
+ * @param reg Internal register ADDRESS, see adns2610.h
+ * @param value Value to write in the internal register
+ */
 void adns2610_writeRegister(Device dev, uint8_t reg, uint8_t value){
 
 	GET_SPI_PERIPH(dev, SPIx);
@@ -286,7 +160,11 @@ void adns2610_writeRegister(Device dev, uint8_t reg, uint8_t value){
 
 	#endif
 }
-
+/**
+ * @brief Receive a byte from ADNS2610 as reply of adns2610_sendByte(Device dev, uint8_t value) function
+ * @param dev Device address, it refers to SPI peripheral where the sensor is connected
+ * @param value Pointer to a variable where the received value is stored
+ */
 void adns2610_receiveByte(Device dev, uint8_t* value){
 
 	GET_SPI_PERIPH(dev, SPIx);
@@ -303,7 +181,11 @@ void adns2610_receiveByte(Device dev, uint8_t* value){
 
 	#endif
 }
-
+/**
+ * @brief Send a byte to ADNS2610. It's used to request to ADNS2610 a register value in IT mode
+ * @param dev Device address, it refers to SPI peripheral where the sensor is connected
+ * @param value Value of the sent value
+ */
 void adns2610_sendByte(Device dev, uint8_t value){
 
 	GET_SPI_PERIPH(dev, SPIx);
@@ -320,8 +202,12 @@ void adns2610_sendByte(Device dev, uint8_t value){
 
 	#endif
 }
-
-void adns2610_readFrameSync(Device dev, pixelTypeDef buffer[]){
+/**
+ * @brief Read a frame from ADNS2610 by polling
+ * @param dev Device address, it refers to SPI peripheral where the sensor is connected
+ * @param buffer Array where the frame is going to be stored
+ */
+void adns2610_readFrame(Device dev, pixelTypeDef buffer[]){
 	uint16_t idx = 0;
 
 	while(idx < PIXEL_QTY){
@@ -349,33 +235,30 @@ void adns2610_readFrameSync(Device dev, pixelTypeDef buffer[]){
 		}
 	}
 }
-
-void adns2610_checkPixel(pixelTypeDef* Pixel, uint16_t* idx){
+/**
+ * @brief Check the status of a pixel
+ * @param Pixel The PIXEL DATA register value received from ADNS2610
+ * @return See PixelStatus
+ */
+PixelStatus adns2610_checkPixel(pixelTypeDef* Pixel){
 	if(*Pixel & ADNS2610_PIXEL_VALID){
-		if((!*idx) & (*Pixel & ADNS2610_PIXEL_SOF)){
-			(*idx)++;
+		if(*Pixel & ADNS2610_PIXEL_SOF){
+			return VALID_SOF;
 		}
-		else if(*idx & !(*Pixel & ADNS2610_PIXEL_SOF)){
-			(*idx)++;
-		}
-		else{
-			FSM_state = TRIGGER_FRAME;
-		}
+		return VALID;
 	}
-//	if(!*idx){
-//		if(*Pixel & (PIXEL_VALID | PIXEL_SOF)){
-//			(*idx)++;
-//		}
-//		else{
-//			(*idx) = 0;
-//		}
-//	}
-//	else if (*Pixel & PIXEL_VALID){
-//		(*idx)++;
-//	}
+	else if(*Pixel & ADNS2610_PIXEL_SOF){
+		return NON_VALID_SOF;
+	}
+	else{
+		return NON_VALID;
+	}
 }
-
-void printImage(pixelTypeDef frame[]){
+/**
+ * @brief Print the received frame values in the console through UART
+ * @param frame	The array which contains the pixel values
+ */
+void adns2610_printImage(pixelTypeDef frame[]){
 	uint16_t i = 0;
 
 	printf("=======================================================\r\n||");
@@ -391,12 +274,3 @@ void printImage(pixelTypeDef frame[]){
 	printf("||\r\n=======================================================\r\n");
 }
 
-void TIM1_UP_TIM16_IRQHandler(void){
-	// If the interrupt flag is enabled
-	if(READ_BIT(TIM1->SR, TIM_SR_UIF)){
-		// Clear pending interrupt flag
-		CLEAR_BIT(TIM1->SR, TIM_SR_UIF);
-		// Process FSM
-		adns2610_processFSM();
-	}
-}

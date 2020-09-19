@@ -5,6 +5,258 @@
  *      Author: deros
  */
 
+/* Private includes ----------------------------------------------------------*/
 #include "eyes.h"
 
+/* Private macro -------------------------------------------------------------*/
+#define SWITCH_FRAME_IDX(current, past)	{uint8_t temp; temp = past; past = current; current = temp;}
 
+/* Private typedefs --------------------------------------------*/
+typedef enum adns2610_state{
+	SENSOR_RESET,
+	TRIGGER_FRAME,
+	READING_FRAME,
+	REQ_READING_FRAME,
+	PROCESSING
+} eyes_FSMstate_TypeDef;
+
+/* Private variables -------------------------------------------*/
+static eyes_FSMstate_TypeDef FSMstate;
+
+/* Private functions -------------------------------------------*/
+void eyes_configureFSM_TIM(void);
+void eyes_FSM(void);
+__STATIC_INLINE void eyes_waitIT(uint32_t Count250ns);
+__STATIC_INLINE void eyes_stopWaitIT();
+bool eyes_computeIdxFromStatus(PixelStatus* status1, PixelStatus* status2, uint16_t* idx1,  uint16_t* idx2);
+
+void eyes_init(){
+	// Configure the timer to read the frames continuously
+	eyes_configureFSM_TIM();
+
+	// Initialize ADNS2610 sensor
+	adns2610_init(ADNS2610_RIGHT);
+#if SECOND_SENSOR_IMPLEMENTED
+	adns2610_init(ADNS2610_LEFT);
+#endif
+
+	// Giving initial values to variables
+	currentFrameIdx = 1;
+	lastFrameIdx = 0;
+}
+
+void eyes_start(){
+	SET_BIT(TIM1->CR1, TIM_CR1_CEN);
+	FSMstate = TRIGGER_FRAME;
+}
+
+void eyes_stop(){
+	FSMstate = RESET;
+}
+
+/* eye FSM states operation ----------------------------------------------------
+ * 	-SENSOR_RESET:		The FSM stops. When it is restarted all is reseted.
+ *
+ * 	-TRIGGER_FRAME:		The frame is taken. It's performed by a write operation
+ *   					to PIXEL DATA register.
+ *
+ *	-REQ_READING_FRAME:	The PIXEL DATA register address is sent. After that it's
+ *						needed to wait 100us to get the pixel data. This time is
+ *						used to check the last pixel received.
+ *
+ *	-READING_FRAME:		The pixel data is received and stored after the wait of
+ *						100us.
+ * ------------------------------------------------------------------------------ */
+/** @brief Compute the FSM (Finite State Machine) for control loop
+ *
+ */
+void eyes_FSM(void){
+	static uint16_t pixelIdx[2] = { 0 };
+	static PixelStatus pixelStatus [2] = { 0 };
+	static bool firstRead = true;
+
+	static uint8_t collisionFlag = 0;
+	static uint8_t errorCounter = 0;
+
+	switch(FSMstate){
+	case SENSOR_RESET:
+//		if(collisionFlag) goto collisionError; else collisionFlag = 1;
+
+		pixelIdx[ADNS2610_RIGHT] = 0;
+#if SECOND_SENSOR_IMPLEMENTED
+		pixelIdx[ADNS2610_RIGHT] = 0;
+#endif
+		eyes_stopWaitIT();
+		collisionFlag = 0;
+		return;
+	case TRIGGER_FRAME:
+		eyes_stopWaitIT();
+		if(collisionFlag) goto collisionError; else collisionFlag = 1;
+		adns2610_writeRegister(ADNS2610_RIGHT, ADNS2610_PIXEL_DATA_REG, 0x01);
+#if SECOND_SENSOR_IMPLEMENTED
+		adns2610_writeRegister(ADNS2610_LEFT, ADNS2610_PIXEL_DATA_REG, 0x01);
+#endif
+		eyes_waitIT(ADNS2610_TIM_BTW_WR);
+		firstRead = true;
+		SWITCH_FRAME_IDX(currentFrameIdx, lastFrameIdx);
+		FSMstate = REQ_READING_FRAME;
+		pixelIdx[ADNS2610_RIGHT] = 0;
+#if SECOND_SENSOR_IMPLEMENTED
+		pixelIdx[ADNS2610_LEFT] = 0;
+#endif
+		collisionFlag = 0;
+		errorCounter = 0;
+		return;
+	case REQ_READING_FRAME:
+		eyes_stopWaitIT();
+		if(collisionFlag) goto collisionError; else collisionFlag = 1;
+		adns2610_sendByte(ADNS2610_RIGHT, ADNS2610_PIXEL_DATA_REG);
+#if SECOND_SENSOR_IMPLEMENTED
+		adns2610_sendByte(ADNS2610_LEFT, ADNS2610_PIXEL_DATA_REG);
+#endif
+		eyes_waitIT(ADNS2610_TIM_TO_RD);
+		if(!firstRead){
+			pixelStatus[ADNS2610_RIGHT] = adns2610_checkPixel(&frames[currentFrameIdx].frame[ADNS2610_RIGHT][pixelIdx[ADNS2610_RIGHT]]);
+	#if SECOND_SENSOR_IMPLEMENTED
+			pixelStatus[ADNS2610_LEFT] = adns2610_checkPixel(&frames[currentFrameIdx].frame[ADNS2610_LEFT][pixelIdx[ADNS2610_LEFT]]);
+	#endif
+			if(eyes_computeIdxFromStatus(&pixelStatus[ADNS2610_RIGHT], &pixelStatus[ADNS2610_LEFT], &pixelIdx[ADNS2610_RIGHT], &pixelIdx[ADNS2610_LEFT])){
+				FSMstate = READING_FRAME;
+				if((pixelStatus[ADNS2610_RIGHT] == NON_VALID) || (pixelStatus[ADNS2610_RIGHT] == NON_VALID_SOF)) errorCounter++;
+			}
+			else{
+				eyes_stopWaitIT();
+				FSMstate = TRIGGER_FRAME;
+				LL_mDelay(90);
+				eyes_waitIT(1);
+			}
+		}
+		else{
+			firstRead = false;
+			FSMstate = READING_FRAME;
+		}
+		collisionFlag = 0;
+		return;
+	case READING_FRAME:
+		eyes_stopWaitIT();
+		if(collisionFlag) goto collisionError; else collisionFlag = 1;
+		adns2610_receiveByte(ADNS2610_RIGHT, &frames[currentFrameIdx].frame[ADNS2610_RIGHT][pixelIdx[ADNS2610_RIGHT]]);
+#if SECOND_SENSOR_IMPLEMENTED
+		adns2610_receiveByte(ADNS2610_LEFT, &frames[currentFrameIdx].frame[ADNS2610_LEFT][pixelIdx[ADNS2610_LEFT]]);
+#endif
+#if SECOND_SENSOR_IMPLEMENTED
+		if((pixelIdx[ADNS2610_RIGHT] == PIXEL_QTY-1) && pixelIdx[ADNS2610_LEFT] == PIXEL_QTY-1){
+			if(eyes_computeIdxFromStatus(&pixelStatus[ADNS2610_RIGHT], &pixelStatus[ADNS2610_LEFT], &pixelIdx[ADNS2610_RIGHT], &pixelIdx[ADNS2610_LEFT])){
+				FSMstate = PROCESSING;
+			}
+		}
+		else{
+			FSMstate = REQ_READING_FRAME;
+		}
+#else
+		if(pixelIdx[ADNS2610_RIGHT] == PIXEL_QTY-1){
+			if(eyes_computeIdxFromStatus(&pixelStatus[ADNS2610_RIGHT], &pixelStatus[ADNS2610_LEFT], &pixelIdx[ADNS2610_RIGHT], &pixelIdx[ADNS2610_LEFT])){
+				FSMstate = PROCESSING;
+			}
+		}
+		else{
+			FSMstate = REQ_READING_FRAME;
+		}
+#endif
+		eyes_waitIT(ADNS2610_TIM_BTW_RD);
+		collisionFlag = 0;
+		return;
+	case PROCESSING:
+		eyes_stopWaitIT();
+		printf("PROCESSING STATE: %d errors.\r\n", errorCounter);
+		adns2610_printImage(frames->frame[ADNS2610_RIGHT]);
+		if(errorCounter > 10) LL_mDelay(1000);
+		FSMstate = TRIGGER_FRAME;
+		eyes_waitIT(ADNS2610_TIM_BTW_RD);
+		return;
+	}
+
+	collisionError:
+		printf("COLISSION ERROR!!\r\n");
+		eyes_stopWaitIT();
+		while(1);
+}
+
+void eyes_configureFSM_TIM(void){
+	// TIM1 prescalers has been configured to count microseconds
+	uint32_t temp = TIM1->CR1;
+
+	// Disable update interrupt
+	CLEAR_BIT(TIM1->DIER, TIM_DIER_UIE);
+	// Modify CR1 register
+	MODIFY_REG(temp, ~(TIM_CR1_UDIS), TIM_CR1_URS);
+	TIM1->CR1 = temp;
+	// Set interrupt interval
+	TIM1->ARR = ADNS2610_TIM_TO_RD;
+	// Update the prescaler and counter registers
+	SET_BIT(TIM1->EGR, TIM_EGR_UG);
+	// Clear pending interrupt flag
+	CLEAR_BIT(TIM1->SR, TIM_SR_UIF);
+	// Enable update interrupt generation
+	CLEAR_BIT(TIM1->CR1, TIM_CR1_URS);
+	// Enable update interrupt
+	SET_BIT(TIM1->DIER, TIM_DIER_UIE);
+	// Configure NVIC to handle TIM1 update interrupt
+	NVIC_SetPriority(TIM1_UP_TIM16_IRQn, 0);
+	NVIC_EnableIRQ(TIM1_UP_TIM16_IRQn);
+}
+
+void eyes_waitIT(uint32_t Count250ns){
+	// Disable update interrupt generation
+	SET_BIT(TIM1->CR1, TIM_CR1_URS);
+	// Set time to wait
+	TIM1->ARR = Count250ns;
+	// Update the prescaler and counter registers
+	SET_BIT(TIM1->EGR, TIM_EGR_UG);
+	// Enable update interrupt generation
+	CLEAR_BIT(TIM1->CR1, TIM_CR1_URS);
+	// Enable and start timer
+	SET_BIT(TIM1->CR1, TIM_CR1_CEN);
+}
+
+void eyes_stopWaitIT(){
+	// Disable and start timer
+	CLEAR_BIT(TIM1->CR1, TIM_CR1_CEN);
+}
+
+bool eyes_computeIdxFromStatus(PixelStatus* status1, PixelStatus* status2, uint16_t* idx1,  uint16_t* idx2){
+
+	if((*status1 == VALID_SOF) && (*idx1 == 0)){
+		(*idx1)++;
+	}
+	else if((*status1 == VALID) && (*idx1 != 0) && (*idx1 < PIXEL_QTY-1)){
+		(*idx1)++;
+	}
+	else if ((*status1 == VALID_SOF) && (*idx1 != 0)){
+		*idx1 = *idx2 = 0;
+		return false;
+	}
+#if SECOND_SENSOR_IMPLEMENTED
+	if((*status2 == VALID_SOF) && (*idx2 == 0)){
+		(*idx2)++;
+	}
+	else if((*status2 == VALID) && (*idx2 != 0) && (*idx2 < PIXEL_QTY-1)){
+		(*idx2)++;
+	}
+	else if((*status2 == VALID_SOF) && (*idx2 != 0)){
+		(*idx1) = (*idx2) = 0;
+		return false;
+	}
+#endif
+	return true;
+}
+
+void TIM1_UP_TIM16_IRQHandler(void){
+	// If the interrupt flag is enabled
+	if(READ_BIT(TIM1->SR, TIM_SR_UIF)){
+		// Clear pending interrupt flag
+		CLEAR_BIT(TIM1->SR, TIM_SR_UIF);
+		// Process FSM
+		eyes_FSM();
+	}
+}
