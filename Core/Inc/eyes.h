@@ -20,7 +20,7 @@ typedef struct __attribute__((__packed__)){
 } opticalFlowStruct;
 
 typedef struct __attribute__((__packed__)){ 	/* payload -> 		2*324 + 3*3*4 = 684 bytes  */
-	const uint8_t header = 0xFF;				/* total length -> 	685 bytes */
+	const uint8_t header;				/* total length -> 	685 bytes */
 	pixelTypeDef frame [2][PIXEL_QTY];
 	opticalFlowStruct oFRight;
 	opticalFlowStruct oFLeft;
@@ -31,7 +31,7 @@ typedef struct __attribute__((__packed__)){ 	/* payload -> 		2*324 + 3*3*4 = 684
 #define FRAME_STUCT_LENGTH	684  // bytes
 
 /* Exported variables ---------------------------------------------------------*/
-frameStruct frames[2];
+extern frameStruct frames[2];
 uint8_t currentFrameIdx;
 uint8_t lastFrameIdx;
 

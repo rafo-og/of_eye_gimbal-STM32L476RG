@@ -18,16 +18,16 @@
 /** @defgroup ADNS2610 transference times defined in base of 250ns counter
  * @{
  */
-/* Times defined in datasheet with some additional tolerance -------------*/
+/* Times defined in data sheet with some additional tolerance -------------*/
 //#define ADNS2610_TIM_BTW_RD 		500/250					// 500ns
 //#define ADNS2610_TIM_BTW_WR 		150000/250				// 150us
-//#define ADNS2610_TIM_TO_RD 			150000/250				// 150us
+//#define ADNS2610_TIM_TO_RD 		150000/250				// 150us
 
 /* Times adjusted by hand to reduce the errors in the frame transference -*/
-/* Time to acquire a frame (50 + 300) * (324 pixels + 6 errors max.) + 300 = 9 fps aprox.*/
+/* Time to acquire a frame (50 + 600) * (324 pixels) + 700 = 211.3ms -> 5 GPS roughly*/
 #define ADNS2610_TIM_BTW_RD 		50000/250				// 50us
-#define ADNS2610_TIM_BTW_WR 		300000/250				// 300us
-#define ADNS2610_TIM_TO_RD 			300000/250				// 300us
+#define ADNS2610_TIM_BTW_WR 		700000/250				// 300us
+#define ADNS2610_TIM_TO_RD 			600000/250				// 300us
 /**
  * @}
  */

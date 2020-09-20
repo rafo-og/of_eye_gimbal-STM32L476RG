@@ -30,6 +30,9 @@ __STATIC_INLINE void eyes_waitIT(uint32_t Count250ns);
 __STATIC_INLINE void eyes_stopWaitIT();
 bool eyes_computeIdxFromStatus(PixelStatus* status1, PixelStatus* status2, uint16_t* idx1,  uint16_t* idx2);
 
+/* Exported variables -------------------------------------------*/
+frameStruct frames[2] = {{.header = 0xFF}, {.header = 0xFF}};
+
 void eyes_init(){
 	// Configure the timer to read the frames continuously
 	eyes_configureFSM_TIM();
@@ -76,7 +79,7 @@ void eyes_FSM(void){
 	static bool firstRead = true;
 
 	static uint8_t collisionFlag = 0;
-	static uint8_t errorCounter = 0;
+	static uint16_t errorCounter = 0;
 
 	switch(FSMstate){
 	case SENSOR_RESET:
@@ -122,13 +125,15 @@ void eyes_FSM(void){
 	#endif
 			if(eyes_computeIdxFromStatus(&pixelStatus[ADNS2610_RIGHT], &pixelStatus[ADNS2610_LEFT], &pixelIdx[ADNS2610_RIGHT], &pixelIdx[ADNS2610_LEFT])){
 				FSMstate = READING_FRAME;
-				if((pixelStatus[ADNS2610_RIGHT] == NON_VALID) || (pixelStatus[ADNS2610_RIGHT] == NON_VALID_SOF)) errorCounter++;
+				if((pixelStatus[ADNS2610_RIGHT] == NON_VALID) || (pixelStatus[ADNS2610_RIGHT] == NON_VALID_SOF)){
+					errorCounter++;
+					printf(" idx: %d ", pixelIdx[ADNS2610_RIGHT]);
+				}
 			}
 			else{
 				eyes_stopWaitIT();
 				FSMstate = TRIGGER_FRAME;
-				LL_mDelay(90);
-				eyes_waitIT(1);
+				eyes_waitIT(ADNS2610_TIM_BTW_WR);
 			}
 		}
 		else{
@@ -168,9 +173,9 @@ void eyes_FSM(void){
 		return;
 	case PROCESSING:
 		eyes_stopWaitIT();
-		printf("PROCESSING STATE: %d errors.\r\n", errorCounter);
-		adns2610_printImage(frames->frame[ADNS2610_RIGHT]);
-		if(errorCounter > 10) LL_mDelay(1000);
+		printf("%d\r\n", errorCounter);
+//		adns2610_printImage(frames->frame[ADNS2610_RIGHT]);
+//		if(errorCounter > 10) LL_mDelay(1000);
 		FSMstate = TRIGGER_FRAME;
 		eyes_waitIT(ADNS2610_TIM_BTW_RD);
 		return;
