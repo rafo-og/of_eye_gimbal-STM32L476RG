@@ -43,9 +43,12 @@ void eyes_init(){
 	adns2610_init(ADNS2610_LEFT);
 #endif
 
+	// Configure DMA to transfer the frameStruct through DMA
+	configureDMA_USART_TX(USART2, BYTE, MEDIUM);
+
 	// Giving initial values to variables
-	currentFrameIdx = 1;
-	lastFrameIdx = 0;
+	currentFrameIdx = 0;
+	lastFrameIdx = 1;
 }
 
 void eyes_start(){
@@ -76,7 +79,8 @@ void eyes_stop(){
 void eyes_FSM(void){
 	static uint16_t pixelIdx[2] = { 0 };
 	static PixelStatus pixelStatus [2] = { 0 };
-	static bool firstRead = true;
+	static bool firstPixelRead = true;
+	static bool firstFrameRead = true;
 
 	static uint8_t collisionFlag = 0;
 	static uint16_t errorCounter = 0;
@@ -100,13 +104,14 @@ void eyes_FSM(void){
 		adns2610_writeRegister(ADNS2610_LEFT, ADNS2610_PIXEL_DATA_REG, 0x01);
 #endif
 		eyes_waitIT(ADNS2610_TIM_BTW_WR);
-		firstRead = true;
-		SWITCH_FRAME_IDX(currentFrameIdx, lastFrameIdx);
+		firstPixelRead = true;
+//		SWITCH_FRAME_IDX(currentFrameIdx, lastFrameIdx);
 		FSMstate = REQ_READING_FRAME;
 		pixelIdx[ADNS2610_RIGHT] = 0;
 #if SECOND_SENSOR_IMPLEMENTED
 		pixelIdx[ADNS2610_LEFT] = 0;
 #endif
+		transferDMA_USART2_TX((uint32_t) &(frames[lastFrameIdx].header), FRAME_STUCT_LENGTH);
 		collisionFlag = 0;
 		errorCounter = 0;
 		return;
@@ -118,7 +123,7 @@ void eyes_FSM(void){
 		adns2610_sendByte(ADNS2610_LEFT, ADNS2610_PIXEL_DATA_REG);
 #endif
 		eyes_waitIT(ADNS2610_TIM_TO_RD);
-		if(!firstRead){
+		if(!firstPixelRead){
 			pixelStatus[ADNS2610_RIGHT] = adns2610_checkPixel(&frames[currentFrameIdx].frame[ADNS2610_RIGHT][pixelIdx[ADNS2610_RIGHT]]);
 	#if SECOND_SENSOR_IMPLEMENTED
 			pixelStatus[ADNS2610_LEFT] = adns2610_checkPixel(&frames[currentFrameIdx].frame[ADNS2610_LEFT][pixelIdx[ADNS2610_LEFT]]);
@@ -127,7 +132,6 @@ void eyes_FSM(void){
 				FSMstate = READING_FRAME;
 				if((pixelStatus[ADNS2610_RIGHT] == NON_VALID) || (pixelStatus[ADNS2610_RIGHT] == NON_VALID_SOF)){
 					errorCounter++;
-					printf(" idx: %d ", pixelIdx[ADNS2610_RIGHT]);
 				}
 			}
 			else{
@@ -137,7 +141,7 @@ void eyes_FSM(void){
 			}
 		}
 		else{
-			firstRead = false;
+			firstPixelRead = false;
 			FSMstate = READING_FRAME;
 		}
 		collisionFlag = 0;
@@ -148,8 +152,7 @@ void eyes_FSM(void){
 		adns2610_receiveByte(ADNS2610_RIGHT, &frames[currentFrameIdx].frame[ADNS2610_RIGHT][pixelIdx[ADNS2610_RIGHT]]);
 #if SECOND_SENSOR_IMPLEMENTED
 		adns2610_receiveByte(ADNS2610_LEFT, &frames[currentFrameIdx].frame[ADNS2610_LEFT][pixelIdx[ADNS2610_LEFT]]);
-#endif
-#if SECOND_SENSOR_IMPLEMENTED
+
 		if((pixelIdx[ADNS2610_RIGHT] == PIXEL_QTY-1) && pixelIdx[ADNS2610_LEFT] == PIXEL_QTY-1){
 			if(eyes_computeIdxFromStatus(&pixelStatus[ADNS2610_RIGHT], &pixelStatus[ADNS2610_LEFT], &pixelIdx[ADNS2610_RIGHT], &pixelIdx[ADNS2610_LEFT])){
 				FSMstate = PROCESSING;
@@ -173,9 +176,9 @@ void eyes_FSM(void){
 		return;
 	case PROCESSING:
 		eyes_stopWaitIT();
-		printf("%d\r\n", errorCounter);
-//		adns2610_printImage(frames->frame[ADNS2610_RIGHT]);
-//		if(errorCounter > 10) LL_mDelay(1000);
+		if(firstFrameRead) firstFrameRead = false;
+		SWITCH_FRAME_IDX(currentFrameIdx, lastFrameIdx);
+//		transferDMA_USART2_TX((uint32_t) &(frames[lastFrameIdx].header), FRAME_STUCT_LENGTH);
 		FSMstate = TRIGGER_FRAME;
 		eyes_waitIT(ADNS2610_TIM_BTW_RD);
 		return;

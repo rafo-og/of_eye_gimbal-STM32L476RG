@@ -9,6 +9,7 @@
 #define INC_EYES_H_
 
 #include "adns2610.h"
+#include "usart.h"
 
 #define	SECOND_SENSOR_IMPLEMENTED	false
 
