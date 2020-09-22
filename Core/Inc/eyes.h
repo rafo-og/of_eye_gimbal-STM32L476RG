@@ -17,19 +17,25 @@
 typedef struct __attribute__((__packed__)){
 	int x;
 	int y;
-	int tetha;
-} opticalFlowStruct;
+} optical2DFlowStruct;
 
-typedef struct __attribute__((__packed__)){ 	/* payload -> 		2*324 + 3*3*4 = 684 bytes  */
-	const uint8_t header;				/* total length -> 	685 bytes */
+typedef struct __attribute__((__packed__)){
+	int x;
+	int y;
+	int theta;
+} optical2DandRotateFlowStruct;
+
+typedef struct __attribute__((__packed__)){ 	/* payload -> 		2*324 + 2*2*4 + 3*4 = 677 bytes  */
+	const uint8_t header;						/* total length -> 	688 bytes */
+	uint8_t seq;
 	pixelTypeDef frame [2][PIXEL_QTY];
-	opticalFlowStruct oFRight;
-	opticalFlowStruct oFLeft;
-	opticalFlowStruct oFFused;
+	optical2DFlowStruct oFRight;
+	optical2DFlowStruct oFLeft;
+	optical2DandRotateFlowStruct oFFused;
 } frameStruct;
 
 /* Exported constants --------------------------------------------------------*/
-#define FRAME_STUCT_LENGTH	684  // bytes
+#define FRAME_STUCT_LENGTH	677  // bytes
 
 /* Exported variables ---------------------------------------------------------*/
 extern frameStruct frames[2];

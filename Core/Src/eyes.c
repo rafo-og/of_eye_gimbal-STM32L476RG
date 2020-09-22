@@ -84,6 +84,7 @@ void eyes_FSM(void){
 
 	static uint8_t collisionFlag = 0;
 	static uint16_t errorCounter = 0;
+	static uint8_t seqTemp;
 
 	switch(FSMstate){
 	case SENSOR_RESET:
@@ -111,6 +112,7 @@ void eyes_FSM(void){
 #if SECOND_SENSOR_IMPLEMENTED
 		pixelIdx[ADNS2610_LEFT] = 0;
 #endif
+		frames[lastFrameIdx].seq = seqTemp++;
 		transferDMA_USART2_TX((uint32_t) &(frames[lastFrameIdx].header), FRAME_STUCT_LENGTH);
 		collisionFlag = 0;
 		errorCounter = 0;
