@@ -25,8 +25,8 @@ typedef struct __attribute__((__packed__)){
 	int theta;
 } optical2DandRotateFlowStruct;
 
-typedef struct __attribute__((__packed__)){ 	/* payload -> 		2*324 + 2*2*4 + 3*4 = 677 bytes  */
-	const uint8_t header;						/* total length -> 	688 bytes */
+typedef struct __attribute__((__packed__)){ 	/* payload -> 		2*324 + 2*2*4 + 3*4 = 676 bytes  */
+	const uint32_t header;						/* total length (logic + payload) -> 	681 bytes */
 	uint8_t seq;
 	pixelTypeDef frame [2][PIXEL_QTY];
 	optical2DFlowStruct oFRight;
@@ -35,7 +35,8 @@ typedef struct __attribute__((__packed__)){ 	/* payload -> 		2*324 + 2*2*4 + 3*4
 } frameStruct;
 
 /* Exported constants --------------------------------------------------------*/
-#define FRAME_STUCT_LENGTH	677  // bytes
+#define FRAME_STUCT_LENGTH	681  // bytes
+#define FRAME_HEADER		0xBFAABFAA
 
 /* Exported variables ---------------------------------------------------------*/
 extern frameStruct frames[2];

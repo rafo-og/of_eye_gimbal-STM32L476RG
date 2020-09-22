@@ -31,7 +31,7 @@ __STATIC_INLINE void eyes_stopWaitIT();
 bool eyes_computeIdxFromStatus(PixelStatus* status1, PixelStatus* status2, uint16_t* idx1,  uint16_t* idx2);
 
 /* Exported variables -------------------------------------------*/
-frameStruct frames[2] = {{.header = 0xFF}, {.header = 0xFF}};
+frameStruct frames[2] = {{.header = FRAME_HEADER}, {.header = FRAME_HEADER}};
 
 void eyes_init(){
 	// Configure the timer to read the frames continuously
@@ -112,7 +112,7 @@ void eyes_FSM(void){
 #if SECOND_SENSOR_IMPLEMENTED
 		pixelIdx[ADNS2610_LEFT] = 0;
 #endif
-		frames[lastFrameIdx].seq = seqTemp++;
+		frames[lastFrameIdx].seq = (seqTemp++) & 0x7F;
 		transferDMA_USART2_TX((uint32_t) &(frames[lastFrameIdx].header), FRAME_STUCT_LENGTH);
 		collisionFlag = 0;
 		errorCounter = 0;
