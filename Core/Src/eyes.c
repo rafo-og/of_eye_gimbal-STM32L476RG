@@ -22,6 +22,7 @@ typedef enum adns2610_state{
 
 /* Private variables -------------------------------------------*/
 static eyes_FSMstate_TypeDef FSMstate;
+bool initialized = false;
 
 /* Private functions -------------------------------------------*/
 void eyes_configureFSM_TIM(void);
@@ -33,6 +34,9 @@ bool eyes_computeIdxFromStatus(PixelStatus* status1, PixelStatus* status2, uint1
 /* Exported variables -------------------------------------------*/
 frameStruct frames[2] = {{.header = FRAME_HEADER}, {.header = FRAME_HEADER}};
 
+/** @brief Initialize the
+ *
+ */
 void eyes_init(){
 	// Configure the timer to read the frames continuously
 	eyes_configureFSM_TIM();
@@ -49,9 +53,15 @@ void eyes_init(){
 	// Giving initial values to variables
 	currentFrameIdx = 0;
 	lastFrameIdx = 1;
+
+	// Initialization done
+	initialized = true;
 }
 
 void eyes_start(){
+
+	if(!initialized) eyes_init();
+
 	SET_BIT(TIM1->CR1, TIM_CR1_CEN);
 	FSMstate = TRIGGER_FRAME;
 }
@@ -89,12 +99,17 @@ void eyes_FSM(void){
 	switch(FSMstate){
 	case SENSOR_RESET:
 //		if(collisionFlag) goto collisionError; else collisionFlag = 1;
-
 		pixelIdx[ADNS2610_RIGHT] = 0;
 #if SECOND_SENSOR_IMPLEMENTED
 		pixelIdx[ADNS2610_RIGHT] = 0;
 #endif
 		eyes_stopWaitIT();
+		pixelIdx[0] = pixelIdx[1] = 0;
+		pixelStatus[0] = pixelIdx[1] = 0;
+		firstPixelRead = true;
+		firstFrameRead = true;
+		seqTemp = 0;
+		initialized = false;
 		collisionFlag = 0;
 		return;
 	case TRIGGER_FRAME:
@@ -106,14 +121,16 @@ void eyes_FSM(void){
 #endif
 		eyes_waitIT(ADNS2610_TIM_BTW_WR);
 		firstPixelRead = true;
-//		SWITCH_FRAME_IDX(currentFrameIdx, lastFrameIdx);
 		FSMstate = REQ_READING_FRAME;
 		pixelIdx[ADNS2610_RIGHT] = 0;
 #if SECOND_SENSOR_IMPLEMENTED
 		pixelIdx[ADNS2610_LEFT] = 0;
 #endif
-		frames[lastFrameIdx].seq = (seqTemp++) & 0x7F;
-		transferDMA_USART2_TX((uint32_t) &(frames[lastFrameIdx].header), FRAME_STUCT_LENGTH);
+		if(!firstFrameRead){
+			frames[lastFrameIdx].seq = (seqTemp++) & 0x7F;
+			transferDMA_USART2_TX((uint32_t) &(frames[lastFrameIdx].header), FRAME_STUCT_LENGTH);
+			OF_ResetCoefficients();
+		}
 		collisionFlag = 0;
 		errorCounter = 0;
 		return;
@@ -135,6 +152,7 @@ void eyes_FSM(void){
 				if((pixelStatus[ADNS2610_RIGHT] == NON_VALID) || (pixelStatus[ADNS2610_RIGHT] == NON_VALID_SOF)){
 					errorCounter++;
 				}
+				if(!firstFrameRead) OF_ComputeCoefficients(frames[currentFrameIdx].frame[ADNS2610_RIGHT], frames[lastFrameIdx].frame[ADNS2610_RIGHT], pixelIdx[ADNS2610_RIGHT]);
 			}
 			else{
 				eyes_stopWaitIT();
@@ -178,9 +196,13 @@ void eyes_FSM(void){
 		return;
 	case PROCESSING:
 		eyes_stopWaitIT();
-		if(firstFrameRead) firstFrameRead = false;
+		if(firstFrameRead){
+			firstFrameRead = false;
+		}
+		else{
+			OF_Compute(&(frames[currentFrameIdx].oFRight.x), &(frames[currentFrameIdx].oFRight.y));
+		}
 		SWITCH_FRAME_IDX(currentFrameIdx, lastFrameIdx);
-//		transferDMA_USART2_TX((uint32_t) &(frames[lastFrameIdx].header), FRAME_STUCT_LENGTH);
 		FSMstate = TRIGGER_FRAME;
 		eyes_waitIT(ADNS2610_TIM_BTW_RD);
 		return;

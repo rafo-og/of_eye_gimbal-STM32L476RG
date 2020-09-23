@@ -8,21 +8,32 @@
 #ifndef INC_EYES_H_
 #define INC_EYES_H_
 
-#include "adns2610.h"
 #include "usart.h"
+#include "adns2610.h"
+#include "opticalFlow.h"
 
+/** @defgroup Eyes constants
+ *  @{
+ */
+
+/* Exported constants --------------------------------------------------------*/
+#define FRAME_STUCT_LENGTH	681  // bytes
+#define FRAME_HEADER		0xBFAABFAA
 #define	SECOND_SENSOR_IMPLEMENTED	false
+/**
+ * @}
+ */
 
 /* Exported types ------------------------------------------------------------*/
 typedef struct __attribute__((__packed__)){
-	int x;
-	int y;
+	int32_t x;
+	int32_t y;
 } optical2DFlowStruct;
 
 typedef struct __attribute__((__packed__)){
-	int x;
-	int y;
-	int theta;
+	int32_t x;
+	int32_t y;
+	int32_t theta;
 } optical2DandRotateFlowStruct;
 
 typedef struct __attribute__((__packed__)){ 	/* payload -> 		2*324 + 2*2*4 + 3*4 = 676 bytes  */
@@ -34,9 +45,6 @@ typedef struct __attribute__((__packed__)){ 	/* payload -> 		2*324 + 2*2*4 + 3*4
 	optical2DandRotateFlowStruct oFFused;
 } frameStruct;
 
-/* Exported constants --------------------------------------------------------*/
-#define FRAME_STUCT_LENGTH	681  // bytes
-#define FRAME_HEADER		0xBFAABFAA
 
 /* Exported variables ---------------------------------------------------------*/
 extern frameStruct frames[2];
