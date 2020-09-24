@@ -152,7 +152,12 @@ void eyes_FSM(void){
 				if((pixelStatus[ADNS2610_RIGHT] == NON_VALID) || (pixelStatus[ADNS2610_RIGHT] == NON_VALID_SOF)){
 					errorCounter++;
 				}
-				if(!firstFrameRead) OF_ComputeCoefficients(frames[currentFrameIdx].frame[ADNS2610_RIGHT], frames[lastFrameIdx].frame[ADNS2610_RIGHT], pixelIdx[ADNS2610_RIGHT]);
+				if(!firstFrameRead){
+					OF_ComputeCoefficients(ADNS2610_RIGHT, frames[currentFrameIdx].frame[ADNS2610_RIGHT], frames[lastFrameIdx].frame[ADNS2610_RIGHT], pixelIdx[ADNS2610_RIGHT]);
+#if SECOND_SENSOR_IMPLEMENTED
+					OF_ComputeCoefficients(ADNS2610_LEFT, frames[currentFrameIdx].frame[ADNS2610_RIGHT], frames[lastFrameIdx].frame[ADNS2610_RIGHT], pixelIdx[ADNS2610_RIGHT]);
+#endif
+				}
 			}
 			else{
 				eyes_stopWaitIT();
@@ -200,7 +205,10 @@ void eyes_FSM(void){
 			firstFrameRead = false;
 		}
 		else{
-			OF_Compute(&(frames[currentFrameIdx].oFRight.x), &(frames[currentFrameIdx].oFRight.y));
+			OF_Compute(ADNS2610_RIGHT, &(frames[currentFrameIdx].oFRight.x), &(frames[currentFrameIdx].oFRight.y));
+#if SECOND_SENSOR_IMPLEMENTED
+			OF_Compute(ADNS2610_LEFT, &(frames[currentFrameIdx].oFRight.x), &(frames[currentFrameIdx].oFRight.y));
+#endif
 		}
 		SWITCH_FRAME_IDX(currentFrameIdx, lastFrameIdx);
 		FSMstate = TRIGGER_FRAME;

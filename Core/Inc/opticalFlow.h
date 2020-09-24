@@ -17,7 +17,7 @@
 
 /* Exported functions --------------------------------------------------------*/
 void OF_ResetCoefficients();
-void OF_ComputeCoefficients(uint8_t currentFrame[], uint8_t lastFrame[], int32_t idx);
-void OF_Compute(int32_t* ofX, int32_t* ofY);
+void OF_ComputeCoefficients(Device dev, uint8_t currentFrame[], uint8_t lastFrame[], int32_t idx);
+void OF_Compute(Device dev, int32_t* ofX, int32_t* ofY);
 
 #endif /* INC_OPTICALFLOW_H_ */
