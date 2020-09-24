@@ -97,12 +97,14 @@ void eyes_FSM(void){
 	static uint8_t seqTemp;
 
 	switch(FSMstate){
+	/* SENSOR_RESET state --------------------------------------------------------- */
 	case SENSOR_RESET:
 //		if(collisionFlag) goto collisionError; else collisionFlag = 1;
 		pixelIdx[ADNS2610_RIGHT] = 0;
 #if SECOND_SENSOR_IMPLEMENTED
 		pixelIdx[ADNS2610_RIGHT] = 0;
 #endif
+		/* Stop the interrupt timer and reset all the relevant values */
 		eyes_stopWaitIT();
 		pixelIdx[0] = pixelIdx[1] = 0;
 		pixelStatus[0] = pixelIdx[1] = 0;
@@ -112,13 +114,19 @@ void eyes_FSM(void){
 		initialized = false;
 		collisionFlag = 0;
 		return;
+	/* TRIGGER_FRAME state --------------------------------------------------------- */
 	case TRIGGER_FRAME:
 		eyes_stopWaitIT();
 		if(collisionFlag) goto collisionError; else collisionFlag = 1;
+		/* Write pixel data register to reset the HW */
 		adns2610_writeRegister(ADNS2610_RIGHT, ADNS2610_PIXEL_DATA_REG, 0x01);
 #if SECOND_SENSOR_IMPLEMENTED
 		adns2610_writeRegister(ADNS2610_LEFT, ADNS2610_PIXEL_DATA_REG, 0x01);
 #endif
+		/* While it waits the needed delay it's performed some tasks:
+		 * 	- Increasing the SEQ number
+		 * 	- Transfer all data by means of DMA
+		 * 	*/
 		eyes_waitIT(ADNS2610_TIM_BTW_WR);
 		firstPixelRead = true;
 		FSMstate = REQ_READING_FRAME;
@@ -134,13 +142,19 @@ void eyes_FSM(void){
 		collisionFlag = 0;
 		errorCounter = 0;
 		return;
+	/* REQ_READING_FRAME state --------------------------------------------------------- */
 	case REQ_READING_FRAME:
 		eyes_stopWaitIT();
 		if(collisionFlag) goto collisionError; else collisionFlag = 1;
+		/* Send a pixel data read request */
 		adns2610_sendByte(ADNS2610_RIGHT, ADNS2610_PIXEL_DATA_REG);
 #if SECOND_SENSOR_IMPLEMENTED
 		adns2610_sendByte(ADNS2610_LEFT, ADNS2610_PIXEL_DATA_REG);
 #endif
+		/* While it waits the needed delay it's performed some tasks:
+		 * 	- Check the last received pixel status and take decision related to it
+		 * 	- Compute OF coefficients when it was possible
+		 * 	*/
 		eyes_waitIT(ADNS2610_TIM_TO_RD);
 		if(!firstPixelRead){
 			pixelStatus[ADNS2610_RIGHT] = adns2610_checkPixel(&frames[currentFrameIdx].frame[ADNS2610_RIGHT][pixelIdx[ADNS2610_RIGHT]]);
@@ -171,10 +185,13 @@ void eyes_FSM(void){
 		}
 		collisionFlag = 0;
 		return;
+	/* READING_FRAME state ---------------------------------------------------------------- */
 	case READING_FRAME:
 		eyes_stopWaitIT();
 		if(collisionFlag) goto collisionError; else collisionFlag = 1;
+		/* Read pixel data register */
 		adns2610_receiveByte(ADNS2610_RIGHT, &frames[currentFrameIdx].frame[ADNS2610_RIGHT][pixelIdx[ADNS2610_RIGHT]]);
+		/* Check the last pixel status. This is done because if all is good, the next state is PROCESSING, not REQ_READING_FRAME state */
 #if SECOND_SENSOR_IMPLEMENTED
 		adns2610_receiveByte(ADNS2610_LEFT, &frames[currentFrameIdx].frame[ADNS2610_LEFT][pixelIdx[ADNS2610_LEFT]]);
 
@@ -193,29 +210,35 @@ void eyes_FSM(void){
 			}
 		}
 		else{
+			// It only waits for the next state when it is REQ_READING_FRAME. If not, it continues directly to PROCESSING state.
 			FSMstate = REQ_READING_FRAME;
+			eyes_waitIT(ADNS2610_TIM_BTW_RD);
+			collisionFlag = 0;
+			return;
 		}
 #endif
-		eyes_waitIT(ADNS2610_TIM_BTW_RD);
 		collisionFlag = 0;
-		return;
+	/* PROCESSING state ---------------------------------------------------------------- */
 	case PROCESSING:
-		eyes_stopWaitIT();
+		/* Check if it's the first frame read */
 		if(firstFrameRead){
 			firstFrameRead = false;
 		}
 		else{
+			/* Compute the Optical Flow from the previous computed coefficients */
 			OF_Compute(ADNS2610_RIGHT, &(frames[currentFrameIdx].oFRight.x), &(frames[currentFrameIdx].oFRight.y));
 #if SECOND_SENSOR_IMPLEMENTED
 			OF_Compute(ADNS2610_LEFT, &(frames[currentFrameIdx].oFRight.x), &(frames[currentFrameIdx].oFRight.y));
 #endif
 		}
+		/* Switch the frame structures to store the new frame in the "oldest" data buffer */
 		SWITCH_FRAME_IDX(currentFrameIdx, lastFrameIdx);
 		FSMstate = TRIGGER_FRAME;
 		eyes_waitIT(ADNS2610_TIM_BTW_RD);
 		return;
 	}
 
+	// Check for collisions between interrupts callings
 	collisionError:
 		printf("COLISSION ERROR!!\r\n");
 		eyes_stopWaitIT();
