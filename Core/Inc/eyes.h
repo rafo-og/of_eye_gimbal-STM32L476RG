@@ -19,23 +19,12 @@
 /* Exported constants --------------------------------------------------------*/
 #define FRAME_STUCT_LENGTH	681  // bytes
 #define FRAME_HEADER		0xBFAABFAA
-#define	SECOND_SENSOR_IMPLEMENTED	false
+#define	SECOND_SENSOR_IMPLEMENTED	true
 /**
  * @}
  */
 
 /* Exported types ------------------------------------------------------------*/
-typedef struct __attribute__((__packed__)){
-	int32_t x;
-	int32_t y;
-} optical2DFlowStruct;
-
-typedef struct __attribute__((__packed__)){
-	int32_t x;
-	int32_t y;
-	int32_t theta;
-} optical2DandRotateFlowStruct;
-
 typedef struct __attribute__((__packed__)){ 	/* payload -> 		2*324 + 2*2*4 + 3*4 = 676 bytes  */
 	const uint32_t header;						/* total length (logic + payload) -> 	681 bytes */
 	uint8_t seq;

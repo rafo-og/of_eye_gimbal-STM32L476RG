@@ -102,7 +102,7 @@ void eyes_FSM(void){
 //		if(collisionFlag) goto collisionError; else collisionFlag = 1;
 		pixelIdx[ADNS2610_RIGHT] = 0;
 #if SECOND_SENSOR_IMPLEMENTED
-		pixelIdx[ADNS2610_RIGHT] = 0;
+		pixelIdx[ADNS2610_LEFT] = 0;
 #endif
 		/* Stop the interrupt timer and reset all the relevant values */
 		eyes_stopWaitIT();
@@ -146,10 +146,10 @@ void eyes_FSM(void){
 	case REQ_READING_FRAME:
 		eyes_stopWaitIT();
 		if(collisionFlag) goto collisionError; else collisionFlag = 1;
-		/* Send a pixel data read request */
-		adns2610_sendByte(ADNS2610_RIGHT, ADNS2610_PIXEL_DATA_REG);
+		/* Send a pixel data read request if there are pixels to read*/
+		if(pixelIdx[ADNS2610_RIGHT] <= PIXEL_QTY-1)	adns2610_sendByte(ADNS2610_RIGHT, ADNS2610_PIXEL_DATA_REG);
 #if SECOND_SENSOR_IMPLEMENTED
-		adns2610_sendByte(ADNS2610_LEFT, ADNS2610_PIXEL_DATA_REG);
+		if(pixelIdx[ADNS2610_LEFT] <= PIXEL_QTY-1)	adns2610_sendByte(ADNS2610_LEFT, ADNS2610_PIXEL_DATA_REG);
 #endif
 		/* While it waits the needed delay it's performed some tasks:
 		 * 	- Check the last received pixel status and take decision related to it
@@ -169,7 +169,7 @@ void eyes_FSM(void){
 				if(!firstFrameRead){
 					OF_ComputeCoefficients(ADNS2610_RIGHT, frames[currentFrameIdx].frame[ADNS2610_RIGHT], frames[lastFrameIdx].frame[ADNS2610_RIGHT], pixelIdx[ADNS2610_RIGHT]);
 #if SECOND_SENSOR_IMPLEMENTED
-					OF_ComputeCoefficients(ADNS2610_LEFT, frames[currentFrameIdx].frame[ADNS2610_RIGHT], frames[lastFrameIdx].frame[ADNS2610_RIGHT], pixelIdx[ADNS2610_RIGHT]);
+					OF_ComputeCoefficients(ADNS2610_LEFT, frames[currentFrameIdx].frame[ADNS2610_LEFT], frames[lastFrameIdx].frame[ADNS2610_LEFT], pixelIdx[ADNS2610_LEFT]);
 #endif
 				}
 			}
@@ -190,10 +190,10 @@ void eyes_FSM(void){
 		eyes_stopWaitIT();
 		if(collisionFlag) goto collisionError; else collisionFlag = 1;
 		/* Read pixel data register */
-		adns2610_receiveByte(ADNS2610_RIGHT, &frames[currentFrameIdx].frame[ADNS2610_RIGHT][pixelIdx[ADNS2610_RIGHT]]);
+		if(pixelIdx[ADNS2610_RIGHT] <= PIXEL_QTY-1)	adns2610_receiveByte(ADNS2610_RIGHT, &frames[currentFrameIdx].frame[ADNS2610_RIGHT][pixelIdx[ADNS2610_RIGHT]]);
 		/* Check the last pixel status. This is done because if all is good, the next state is PROCESSING, not REQ_READING_FRAME state */
 #if SECOND_SENSOR_IMPLEMENTED
-		adns2610_receiveByte(ADNS2610_LEFT, &frames[currentFrameIdx].frame[ADNS2610_LEFT][pixelIdx[ADNS2610_LEFT]]);
+		if(pixelIdx[ADNS2610_LEFT] <= PIXEL_QTY-1)	adns2610_receiveByte(ADNS2610_LEFT, &frames[currentFrameIdx].frame[ADNS2610_LEFT][pixelIdx[ADNS2610_LEFT]]);
 
 		if((pixelIdx[ADNS2610_RIGHT] == PIXEL_QTY-1) && pixelIdx[ADNS2610_LEFT] == PIXEL_QTY-1){
 			if(eyes_computeIdxFromStatus(&pixelStatus[ADNS2610_RIGHT], &pixelStatus[ADNS2610_LEFT], &pixelIdx[ADNS2610_RIGHT], &pixelIdx[ADNS2610_LEFT])){
@@ -202,6 +202,9 @@ void eyes_FSM(void){
 		}
 		else{
 			FSMstate = REQ_READING_FRAME;
+			eyes_waitIT(ADNS2610_TIM_BTW_RD);
+			collisionFlag = 0;
+			return;
 		}
 #else
 		if(pixelIdx[ADNS2610_RIGHT] == PIXEL_QTY-1){
@@ -228,7 +231,8 @@ void eyes_FSM(void){
 			/* Compute the Optical Flow from the previous computed coefficients */
 			OF_Compute(ADNS2610_RIGHT, &(frames[currentFrameIdx].oFRight.x), &(frames[currentFrameIdx].oFRight.y));
 #if SECOND_SENSOR_IMPLEMENTED
-			OF_Compute(ADNS2610_LEFT, &(frames[currentFrameIdx].oFRight.x), &(frames[currentFrameIdx].oFRight.y));
+			OF_Compute(ADNS2610_LEFT, &(frames[currentFrameIdx].oFLeft.x), &(frames[currentFrameIdx].oFLeft.y));
+			OF_ComputeFused(&frames[currentFrameIdx].oFRight, &frames[currentFrameIdx].oFLeft, &frames[currentFrameIdx].oFFused);
 #endif
 		}
 		/* Switch the frame structures to store the new frame in the "oldest" data buffer */

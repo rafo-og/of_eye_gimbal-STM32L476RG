@@ -9,7 +9,7 @@
 
 /* Private constants ----------------------------------------------------------*/
 #define int24_t_Mask		0x80FFFFFF
-#define bitsOfResolution	12
+#define bitsOfResolution	9
 
 static int64_t A[2];
 static int64_t B[2];
@@ -50,14 +50,18 @@ void OF_Compute(Device dev, int32_t* ofX, int32_t* ofY){
 	den = A[dev] * E[dev] - B[dev] * B[dev];
 
 	if(den > 0){
-		num = ((C[dev]*E[dev]) - (B[dev]*F[dev])) << bitsOfResolution;
-		*ofX = num / den;
-		num = ((A[dev]*F[dev]) - (C[dev]*B[dev])) << bitsOfResolution;
-		*ofY = num / den;
+		num = (C[dev]*E[dev]) - (B[dev]*F[dev]);
+		*ofX = (num << bitsOfResolution)  / den;
+		num = (A[dev]*F[dev]) - (C[dev]*B[dev]);
+		*ofY = (num << bitsOfResolution) / den;
 	}
 	else{
 		*ofX = *ofY = 0;
 	}
+}
 
-	OF_ResetCoefficients();
+void OF_ComputeFused(optical2DFlowStruct* right, optical2DFlowStruct* left, optical2DandRotateFlowStruct* fused){
+	fused->x = (right->x + left->x) >> 2;
+	fused->y = (right->y + left->y) >> 2;
+	fused->theta = (right->y - left->y);
 }
