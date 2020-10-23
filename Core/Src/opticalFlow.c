@@ -30,8 +30,8 @@ void OF_ResetCoefficients(){
 void OF_ComputeCoefficients(Device dev, uint8_t currentFrame[], uint8_t lastFrame[], int32_t idx){
 
 	if(fSelect[idx]){
-		deltaX = (currentFrame[f2[frameIdx]] & ADNS2610_PIXEL_DATA) - (currentFrame[f1[frameIdx]] & ADNS2610_PIXEL_DATA);
-		deltaY = (currentFrame[f4[frameIdx]] & ADNS2610_PIXEL_DATA) - (currentFrame[f3[frameIdx]] & ADNS2610_PIXEL_DATA);
+		deltaX = (lastFrame[f2[frameIdx]] & ADNS2610_PIXEL_DATA) - (lastFrame[f1[frameIdx]] & ADNS2610_PIXEL_DATA);
+		deltaY = (lastFrame[f4[frameIdx]] & ADNS2610_PIXEL_DATA) - (lastFrame[f3[frameIdx]] & ADNS2610_PIXEL_DATA);
 		deltaT = (currentFrame[f0[frameIdx]] & ADNS2610_PIXEL_DATA) - (lastFrame[f0[frameIdx]] & ADNS2610_PIXEL_DATA);
 
 		A[dev] += deltaX * deltaX;

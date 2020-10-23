@@ -3572,14 +3572,14 @@ void OF_ComputeCoefficients(Device dev, uint8_t currentFrame[], uint8_t lastFram
  80019d0:	781b      	ldrb	r3, [r3, #0]
  80019d2:	2b00      	cmp	r3, #0
  80019d4:	f000 80e0 	beq.w	8001b98 <OF_ComputeCoefficients+0x1e0>
-		deltaX = (currentFrame[f2[frameIdx]] & ADNS2610_PIXEL_DATA) - (currentFrame[f1[frameIdx]] & ADNS2610_PIXEL_DATA);
+		deltaX = (lastFrame[f2[frameIdx]] & ADNS2610_PIXEL_DATA) - (lastFrame[f1[frameIdx]] & ADNS2610_PIXEL_DATA);
  80019d8:	4b73      	ldr	r3, [pc, #460]	; (8001ba8 <OF_ComputeCoefficients+0x1f0>)
  80019da:	f9b3 3000 	ldrsh.w	r3, [r3]
  80019de:	461a      	mov	r2, r3
  80019e0:	4b72      	ldr	r3, [pc, #456]	; (8001bac <OF_ComputeCoefficients+0x1f4>)
  80019e2:	f833 3012 	ldrh.w	r3, [r3, r2, lsl #1]
  80019e6:	461a      	mov	r2, r3
- 80019e8:	68bb      	ldr	r3, [r7, #8]
+ 80019e8:	687b      	ldr	r3, [r7, #4]
  80019ea:	4413      	add	r3, r2
  80019ec:	781b      	ldrb	r3, [r3, #0]
  80019ee:	f003 023f 	and.w	r2, r3, #63	; 0x3f
@@ -3589,7 +3589,7 @@ void OF_ComputeCoefficients(Device dev, uint8_t currentFrame[], uint8_t lastFram
  80019fa:	4b6d      	ldr	r3, [pc, #436]	; (8001bb0 <OF_ComputeCoefficients+0x1f8>)
  80019fc:	f833 3011 	ldrh.w	r3, [r3, r1, lsl #1]
  8001a00:	4619      	mov	r1, r3
- 8001a02:	68bb      	ldr	r3, [r7, #8]
+ 8001a02:	687b      	ldr	r3, [r7, #4]
  8001a04:	440b      	add	r3, r1
  8001a06:	781b      	ldrb	r3, [r3, #0]
  8001a08:	f003 033f 	and.w	r3, r3, #63	; 0x3f
@@ -3597,14 +3597,14 @@ void OF_ComputeCoefficients(Device dev, uint8_t currentFrame[], uint8_t lastFram
  8001a0e:	461a      	mov	r2, r3
  8001a10:	4b68      	ldr	r3, [pc, #416]	; (8001bb4 <OF_ComputeCoefficients+0x1fc>)
  8001a12:	601a      	str	r2, [r3, #0]
-		deltaY = (currentFrame[f4[frameIdx]] & ADNS2610_PIXEL_DATA) - (currentFrame[f3[frameIdx]] & ADNS2610_PIXEL_DATA);
+		deltaY = (lastFrame[f4[frameIdx]] & ADNS2610_PIXEL_DATA) - (lastFrame[f3[frameIdx]] & ADNS2610_PIXEL_DATA);
  8001a14:	4b64      	ldr	r3, [pc, #400]	; (8001ba8 <OF_ComputeCoefficients+0x1f0>)
  8001a16:	f9b3 3000 	ldrsh.w	r3, [r3]
  8001a1a:	461a      	mov	r2, r3
  8001a1c:	4b66      	ldr	r3, [pc, #408]	; (8001bb8 <OF_ComputeCoefficients+0x200>)
  8001a1e:	f833 3012 	ldrh.w	r3, [r3, r2, lsl #1]
  8001a22:	461a      	mov	r2, r3
- 8001a24:	68bb      	ldr	r3, [r7, #8]
+ 8001a24:	687b      	ldr	r3, [r7, #4]
  8001a26:	4413      	add	r3, r2
  8001a28:	781b      	ldrb	r3, [r3, #0]
  8001a2a:	f003 023f 	and.w	r2, r3, #63	; 0x3f
@@ -3614,7 +3614,7 @@ void OF_ComputeCoefficients(Device dev, uint8_t currentFrame[], uint8_t lastFram
  8001a36:	4b61      	ldr	r3, [pc, #388]	; (8001bbc <OF_ComputeCoefficients+0x204>)
  8001a38:	f833 3011 	ldrh.w	r3, [r3, r1, lsl #1]
  8001a3c:	4619      	mov	r1, r3
- 8001a3e:	68bb      	ldr	r3, [r7, #8]
+ 8001a3e:	687b      	ldr	r3, [r7, #4]
  8001a40:	440b      	add	r3, r1
  8001a42:	781b      	ldrb	r3, [r3, #0]
  8001a44:	f003 033f 	and.w	r3, r3, #63	; 0x3f
