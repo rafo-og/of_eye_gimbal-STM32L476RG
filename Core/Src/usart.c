@@ -57,7 +57,7 @@ void MX_USART2_UART_Init(void)
   USART_InitStruct.Parity = LL_USART_PARITY_NONE;
   USART_InitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
   USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
-  USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
+  USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_8;
   LL_USART_Init(USART2, &USART_InitStruct);
   LL_USART_ConfigAsyncMode(USART2);
   LL_USART_Enable(USART2);
@@ -120,6 +120,15 @@ void configureDMA_USART_TX(USART_TypeDef* USARTx, WordLenghtDMA_t wordLength, Pr
 		NVIC_SetPriority(DMA1_Channel7_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
 		NVIC_EnableIRQ(DMA1_Channel7_IRQn);
 	}
+}
+
+void configure_IRQ_USART_RX(){
+	// Set RXNEIE to enable the RX interrupt
+	SET_BIT(USART2->CR1, USART_CR1_RXNEIE);
+
+	// Enable global interrupt for UART2
+	NVIC_SetPriority(USART2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 1, 0));
+	NVIC_EnableIRQ(USART2_IRQn);
 }
 
 void DMA1_Channel7_IRQHandler(void){

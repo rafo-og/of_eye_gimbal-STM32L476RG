@@ -1,5 +1,6 @@
 "Core/Src/adns2610.o"
 "Core/Src/eyes.o"
+"Core/Src/gimbalControl.o"
 "Core/Src/gpio.o"
 "Core/Src/main.o"
 "Core/Src/opticalFlow.o"

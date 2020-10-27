@@ -62,6 +62,8 @@ __STATIC_INLINE void transferDMA_USART2_TX(uint32_t fromAddress, uint16_t dataLe
 	DMA1_Channel7->CCR = temp;
 }
 
+void configure_IRQ_USART_RX();
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

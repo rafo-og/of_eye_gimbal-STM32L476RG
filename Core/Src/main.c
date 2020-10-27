@@ -27,6 +27,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "eyes.h"
+#include "gimbalControl.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -102,6 +103,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   startupPrint();
+
+  gimbalControlInit();
 
   eyes_init();
   eyes_start();
