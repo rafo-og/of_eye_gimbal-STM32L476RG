@@ -3761,7 +3761,7 @@ static int16_t frameIdx;
 void OF_ResetCoefficients(){
  8001abc:	b490      	push	{r4, r7}
  8001abe:	af00      	add	r7, sp, #0
-	A[0] = B[0] = C[0] = E[0] = F[0] = 0;
+	A[0] = B[0] = C[0] = D[0] = E[0] = 0;
  8001ac0:	4a22      	ldr	r2, [pc, #136]	; (8001b4c <OF_ResetCoefficients+0x90>)
  8001ac2:	f04f 0300 	mov.w	r3, #0
  8001ac6:	f04f 0400 	mov.w	r4, #0
@@ -3782,7 +3782,7 @@ void OF_ResetCoefficients(){
  8001af4:	e9d3 3400 	ldrd	r3, r4, [r3]
  8001af8:	4a18      	ldr	r2, [pc, #96]	; (8001b5c <OF_ResetCoefficients+0xa0>)
  8001afa:	e9c2 3400 	strd	r3, r4, [r2]
-	A[1] = B[1] = C[1] = E[1] = F[1] = 0;
+	A[1] = B[1] = C[1] = D[1] = E[1] = 0;
  8001afe:	4a13      	ldr	r2, [pc, #76]	; (8001b4c <OF_ResetCoefficients+0x90>)
  8001b00:	f04f 0300 	mov.w	r3, #0
  8001b04:	f04f 0400 	mov.w	r4, #0
@@ -3975,7 +3975,7 @@ void OF_ComputeCoefficients(Device dev, uint8_t currentFrame[], uint8_t lastFram
  8001cc6:	00c2      	lsls	r2, r0, #3
  8001cc8:	440a      	add	r2, r1
  8001cca:	e9c2 3400 	strd	r3, r4, [r2]
-		E[dev] += deltaY * deltaY;
+		D[dev] += deltaY * deltaY;
  8001cce:	7bfb      	ldrb	r3, [r7, #15]
  8001cd0:	4a2c      	ldr	r2, [pc, #176]	; (8001d84 <OF_ComputeCoefficients+0x220>)
  8001cd2:	00db      	lsls	r3, r3, #3
@@ -3995,7 +3995,7 @@ void OF_ComputeCoefficients(Device dev, uint8_t currentFrame[], uint8_t lastFram
  8001cf8:	00c2      	lsls	r2, r0, #3
  8001cfa:	440a      	add	r2, r1
  8001cfc:	e9c2 3400 	strd	r3, r4, [r2]
-		F[dev] += deltaT * deltaY;
+		E[dev] += deltaT * deltaY;
  8001d00:	7bfb      	ldrb	r3, [r7, #15]
  8001d02:	4a21      	ldr	r2, [pc, #132]	; (8001d88 <OF_ComputeCoefficients+0x224>)
  8001d04:	00db      	lsls	r3, r3, #3
@@ -4060,7 +4060,7 @@ void OF_Compute(Device dev, int32_t* ofX, int32_t* ofY){
  8001d9a:	73fb      	strb	r3, [r7, #15]
 	int64_t num, den;
 
-	den = A[dev] * E[dev] - B[dev] * B[dev];
+	den = A[dev] * D[dev] - B[dev] * B[dev];
  8001d9c:	7bfb      	ldrb	r3, [r7, #15]
  8001d9e:	4a69      	ldr	r2, [pc, #420]	; (8001f44 <OF_Compute+0x1b8>)
  8001da0:	00db      	lsls	r3, r3, #3
@@ -4104,7 +4104,7 @@ void OF_Compute(Device dev, int32_t* ofX, int32_t* ofY){
  8001e06:	2b01      	cmp	r3, #1
  8001e08:	f174 0300 	sbcs.w	r3, r4, #0
  8001e0c:	f2c0 808d 	blt.w	8001f2a <OF_Compute+0x19e>
-		num = (C[dev]*E[dev]) - (B[dev]*F[dev]);
+		num = (C[dev]*D[dev]) - (B[dev]*E[dev]);
  8001e10:	7bfb      	ldrb	r3, [r7, #15]
  8001e12:	4a4f      	ldr	r2, [pc, #316]	; (8001f50 <OF_Compute+0x1c4>)
  8001e14:	00db      	lsls	r3, r3, #3
@@ -4156,7 +4156,7 @@ void OF_Compute(Device dev, int32_t* ofX, int32_t* ofY){
  8001e96:	461a      	mov	r2, r3
  8001e98:	68bb      	ldr	r3, [r7, #8]
  8001e9a:	601a      	str	r2, [r3, #0]
-		num = (A[dev]*F[dev]) - (C[dev]*B[dev]);
+		num = (A[dev]*E[dev]) - (B[dev]*C[dev]);
  8001e9c:	7bfb      	ldrb	r3, [r7, #15]
  8001e9e:	4a29      	ldr	r2, [pc, #164]	; (8001f44 <OF_Compute+0x1b8>)
  8001ea0:	00db      	lsls	r3, r3, #3
@@ -4174,12 +4174,12 @@ void OF_Compute(Device dev, int32_t* ofX, int32_t* ofY){
  8001ec2:	1983      	adds	r3, r0, r6
  8001ec4:	461e      	mov	r6, r3
  8001ec6:	7bfb      	ldrb	r3, [r7, #15]
- 8001ec8:	4a21      	ldr	r2, [pc, #132]	; (8001f50 <OF_Compute+0x1c4>)
+ 8001ec8:	4a20      	ldr	r2, [pc, #128]	; (8001f4c <OF_Compute+0x1c0>)
  8001eca:	00db      	lsls	r3, r3, #3
  8001ecc:	4413      	add	r3, r2
  8001ece:	e9d3 1200 	ldrd	r1, r2, [r3]
  8001ed2:	7bfb      	ldrb	r3, [r7, #15]
- 8001ed4:	481d      	ldr	r0, [pc, #116]	; (8001f4c <OF_Compute+0x1c0>)
+ 8001ed4:	481e      	ldr	r0, [pc, #120]	; (8001f50 <OF_Compute+0x1c4>)
  8001ed6:	00db      	lsls	r3, r3, #3
  8001ed8:	4403      	add	r3, r0
  8001eda:	e9d3 3400 	ldrd	r3, r4, [r3]
@@ -4243,22 +4243,22 @@ void OF_ComputeFused(optical2DFlowStruct* right, optical2DFlowStruct* left, opti
  8001f5e:	60f8      	str	r0, [r7, #12]
  8001f60:	60b9      	str	r1, [r7, #8]
  8001f62:	607a      	str	r2, [r7, #4]
-	fused->x = (right->x + left->x) >> 2;
+	fused->x = (right->x + left->x) >> 1;
  8001f64:	68fb      	ldr	r3, [r7, #12]
  8001f66:	681a      	ldr	r2, [r3, #0]
  8001f68:	68bb      	ldr	r3, [r7, #8]
  8001f6a:	681b      	ldr	r3, [r3, #0]
  8001f6c:	4413      	add	r3, r2
- 8001f6e:	109a      	asrs	r2, r3, #2
+ 8001f6e:	105a      	asrs	r2, r3, #1
  8001f70:	687b      	ldr	r3, [r7, #4]
  8001f72:	601a      	str	r2, [r3, #0]
-	fused->y = (right->y + left->y) >> 2;
+	fused->y = (right->y + left->y) >> 1;
  8001f74:	68fb      	ldr	r3, [r7, #12]
  8001f76:	685a      	ldr	r2, [r3, #4]
  8001f78:	68bb      	ldr	r3, [r7, #8]
  8001f7a:	685b      	ldr	r3, [r3, #4]
  8001f7c:	4413      	add	r3, r2
- 8001f7e:	109a      	asrs	r2, r3, #2
+ 8001f7e:	105a      	asrs	r2, r3, #1
  8001f80:	687b      	ldr	r3, [r7, #4]
  8001f82:	605a      	str	r2, [r3, #4]
 	fused->theta = (right->y - left->y);

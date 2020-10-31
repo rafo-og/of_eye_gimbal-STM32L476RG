@@ -14,16 +14,16 @@
 static int64_t A[2];
 static int64_t B[2];
 static int64_t C[2];
+static int64_t D[2];
 static int64_t E[2];
-static int64_t F[2];
 static int32_t deltaX;
 static int32_t deltaY;
 static int32_t deltaT;
 static int16_t frameIdx;
 
 void OF_ResetCoefficients(){
-	A[0] = B[0] = C[0] = E[0] = F[0] = 0;
-	A[1] = B[1] = C[1] = E[1] = F[1] = 0;
+	A[0] = B[0] = C[0] = D[0] = E[0] = 0;
+	A[1] = B[1] = C[1] = D[1] = E[1] = 0;
 	frameIdx = 0;
 }
 
@@ -37,8 +37,8 @@ void OF_ComputeCoefficients(Device dev, uint8_t currentFrame[], uint8_t lastFram
 		A[dev] += deltaX * deltaX;
 		B[dev] += deltaY * deltaX;
 		C[dev] += deltaT * deltaX;
-		E[dev] += deltaY * deltaY;
-		F[dev] += deltaT * deltaY;
+		D[dev] += deltaY * deltaY;
+		E[dev] += deltaT * deltaY;
 
 		frameIdx++;
 	}
@@ -47,12 +47,12 @@ void OF_ComputeCoefficients(Device dev, uint8_t currentFrame[], uint8_t lastFram
 void OF_Compute(Device dev, int32_t* ofX, int32_t* ofY){
 	int64_t num, den;
 
-	den = A[dev] * E[dev] - B[dev] * B[dev];
+	den = A[dev] * D[dev] - B[dev] * B[dev];
 
 	if(den > 0){
-		num = (C[dev]*E[dev]) - (B[dev]*F[dev]);
+		num = (C[dev]*D[dev]) - (B[dev]*E[dev]);
 		*ofX = (num << bitsOfResolution)  / den;
-		num = (A[dev]*F[dev]) - (C[dev]*B[dev]);
+		num = (A[dev]*E[dev]) - (B[dev]*C[dev]);
 		*ofY = (num << bitsOfResolution) / den;
 	}
 	else{
