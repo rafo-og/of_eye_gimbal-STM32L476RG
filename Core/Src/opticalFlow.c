@@ -63,5 +63,6 @@ void OF_Compute(Device dev, int32_t* ofX, int32_t* ofY){
 void OF_ComputeFused(optical2DFlowStruct* right, optical2DFlowStruct* left, optical2DandRotateFlowStruct* fused){
 	fused->x = (right->x + left->x) >> 1;
 	fused->y = (right->y + left->y) >> 1;
-	fused->theta = (right->y - left->y);
+	if((right->y < 0 && left->y > 0) || (right->y > 0 && left->y < 0))
+		fused->theta = (right->y - left->y);
 }
