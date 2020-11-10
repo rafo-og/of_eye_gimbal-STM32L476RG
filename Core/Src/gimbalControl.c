@@ -16,7 +16,7 @@
 #define MIN_POS		999			// 1 ms
 #define CENTER_POS	1499		// 1.5 ms
 #define MAX_POS		1999		// 2 ms
-#define DELTA_POS	10			// 5us
+#define DELTA_POS	1			// 5us
 
 /* Private typedefs --------------------------------------------*/
 typedef enum commandEnum{
@@ -79,6 +79,9 @@ void gimbalControlInit(void){
  */
 cmdTypeDef decodeCmd(char const * cmdString, int length){
 
+	// Enable PWM if it was disabled
+	if(!pwmEn)	enablePWM();
+
 	// Tracking enable command
 	if(strncmp(cmdString, "TRON\n", length) == 0){
 		trackingEn = true;
@@ -94,12 +97,17 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 
 	// Center command
 	if(strncmp(cmdString, "CN\n", length) == 0){
-		disablePWM();
+
+		motorPos.pitchPos = CENTER_POS;
+		motorPos.rollPos = CENTER_POS;
+		motorPos.yawPos = CENTER_POS;
+
+		//TIM3->CCR1 = motorPos.pitchPos;
+		//TIM3->CCR2 = motorPos.rollPos;
+		TIM3->CCR4 = motorPos.yawPos;
+
 		return CENTER;
 	}
-
-	// Enable PWM if it was disabled
-	if(!pwmEn)	enablePWM();
 
 	// Up command
 	if(strncmp(cmdString, "UP\n", length) == 0){
