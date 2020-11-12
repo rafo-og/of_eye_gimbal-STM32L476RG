@@ -11,6 +11,7 @@
 #include "usart.h"
 #include "adns2610.h"
 #include "opticalFlow.h"
+#include "gimbalControl.h"
 
 /** @defgroup Eyes constants
  *  @{
