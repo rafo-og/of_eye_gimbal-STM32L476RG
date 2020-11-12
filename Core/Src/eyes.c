@@ -238,7 +238,14 @@ void eyes_FSM(void){
 		/* Switch the frame structures to store the new frame in the "oldest" data buffer */
 		SWITCH_FRAME_IDX(currentFrameIdx, lastFrameIdx);
 		FSMstate = TRIGGER_FRAME;
-		eyes_waitIT(ADNS2610_TIM_BTW_RD);
+
+		if(IsTrackingEnable()){
+			applyControlLaw(frames[currentFrameIdx].oFFused.x, frames[currentFrameIdx].oFFused.y, frames[currentFrameIdx].oFFused.theta);
+			eyes_waitIT(65535);
+		}
+		else{
+			eyes_waitIT(ADNS2610_TIM_BTW_RD);
+		}
 		return;
 	}
 
@@ -269,7 +276,7 @@ void eyes_configureFSM_TIM(void){
 	// Enable update interrupt
 	SET_BIT(TIM1->DIER, TIM_DIER_UIE);
 	// Configure NVIC to handle TIM1 update interrupt
-	NVIC_SetPriority(TIM1_UP_TIM16_IRQn, 0);
+	NVIC_SetPriority(TIM1_UP_TIM16_IRQn, 1);
 	NVIC_EnableIRQ(TIM1_UP_TIM16_IRQn);
 }
 

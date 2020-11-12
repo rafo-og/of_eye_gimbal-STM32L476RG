@@ -127,7 +127,7 @@ void configure_IRQ_USART_RX(){
 	SET_BIT(USART2->CR1, USART_CR1_RXNEIE);
 
 	// Enable global interrupt for UART2
-	NVIC_SetPriority(USART2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 1, 0));
+	NVIC_SetPriority(USART2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
 	NVIC_EnableIRQ(USART2_IRQn);
 }
 
