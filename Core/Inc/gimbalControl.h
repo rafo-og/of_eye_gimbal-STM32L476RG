@@ -14,5 +14,7 @@
 
 /* Exported functions --------------------------------------------------------*/
 void gimbalControlInit(void);
+void applyControlLaw(int x, int y, int rotation);
+bool IsTrackingEnable();
 
 #endif /* INC_GIMBALCONTROL_H_ */

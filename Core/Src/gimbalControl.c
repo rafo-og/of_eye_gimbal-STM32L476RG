@@ -16,7 +16,7 @@
 #define MIN_POS		999			// 1 ms
 #define CENTER_POS	1499		// 1.5 ms
 #define MAX_POS		1999		// 2 ms
-#define DELTA_POS	1			// 5us
+#define DELTA_POS	2			// 5us
 
 /* Private typedefs --------------------------------------------*/
 typedef enum commandEnum{
@@ -66,8 +66,8 @@ void gimbalControlInit(void){
 
 /* --------------------------------------------------
  * PWM OUTPUTS:
- * 		- RC-1: Pith	-->		TIM3->CH1	-->	PA6
- * 		- RC-2: Roll	-->		TIM3->CH2	-->	PA7
+ * 		- RC-1: Pith	-->		TIM3->CH1	-->	PA7
+ * 		- RC-2: Roll	-->		TIM3->CH2	-->	PA6
  * 		- RC-3: Yaw		-->		TIM3->CH4	-->	PB1
  * --------------------------------------------------
  */
@@ -102,8 +102,8 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 		motorPos.rollPos = CENTER_POS;
 		motorPos.yawPos = CENTER_POS;
 
-		//TIM3->CCR1 = motorPos.pitchPos;
-		//TIM3->CCR2 = motorPos.rollPos;
+		TIM3->CCR1 = motorPos.pitchPos;
+		TIM3->CCR2 = motorPos.rollPos;
 		TIM3->CCR4 = motorPos.yawPos;
 
 		return CENTER;
@@ -111,10 +111,14 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 
 	// Up command
 	if(strncmp(cmdString, "UP\n", length) == 0){
+		if(motorPos.pitchPos > MIN_POS) motorPos.pitchPos -= DELTA_POS;
+		TIM3->CCR2 = motorPos.pitchPos;
 		return UP;
 	}
 	// Down command
 	if(strncmp(cmdString, "DW\n", length) == 0){
+		if(motorPos.pitchPos < MAX_POS) motorPos.pitchPos += DELTA_POS;
+		TIM3->CCR2 = motorPos.pitchPos;
 		return DOWN;
 	}
 	// Left command
@@ -132,20 +136,36 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 
 	// Rotate left command
 	if(strncmp(cmdString, "RLF\n", length) == 0){
+		if(motorPos.rollPos < MAX_POS) motorPos.rollPos += DELTA_POS;
+		TIM3->CCR1 = motorPos.rollPos;
 		return ROTATE_LEFT;
 	}
 	// Rotate right command
 	if(strncmp(cmdString, "RRH\n", length) == 0){
+		if(motorPos.rollPos > MIN_POS) motorPos.rollPos -= DELTA_POS;
+		TIM3->CCR1 = motorPos.rollPos;
 		return ROTATE_RIGHT;
 	}
 	return NA;
 }
 
+void applyControlLaw(int x, int y, int rotation){
+
+	if(!trackingEn) return;
+
+	if(motorPos.yawPos < MAX_POS && motorPos.yawPos > MIN_POS) motorPos.yawPos += x >> 4;
+	TIM3->CCR4 = motorPos.yawPos;
+}
+
+bool IsTrackingEnable(){
+	return trackingEn;
+}
+
 void enablePWM(){
 	// Enable output compare OCx channels
-	SET_BIT(TIM3->CCER, TIM_CCER_CC4E);
-	/*MODIFY_REG(TIM3->CCER, ~(TIM_CCER_CC1NE | TIM_CCER_CC2NE),
-			(TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC4E));*/
+	//SET_BIT(TIM3->CCER, TIM_CCER_CC4E);
+	MODIFY_REG(TIM3->CCER, ~(TIM_CCER_CC1NE | TIM_CCER_CC2NE),
+			(TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC4E));
 
 	// Enable master output
 	MODIFY_REG(TIM3->BDTR, ~(TIM_BDTR_OSSI | TIM_BDTR_OSSR), TIM_BDTR_MOE);
@@ -158,8 +178,8 @@ void enablePWM(){
 
 void disablePWM(){
 	// Disable output
-	CLEAR_BIT(TIM3->CCER, TIM_CCER_CC4E);
-	//CLEAR_BIT(TIM3->CCER, (TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC4E));
+	//CLEAR_BIT(TIM3->CCER, TIM_CCER_CC4E);
+	CLEAR_BIT(TIM3->CCER, (TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC4E));
 
 	// Disable master output
 	CLEAR_BIT(TIM3->BDTR, TIM_BDTR_MOE);
