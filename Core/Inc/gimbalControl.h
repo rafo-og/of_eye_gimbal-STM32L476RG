@@ -11,6 +11,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usart.h"
 #include "string.h"
+#include <stdlib.h>
 
 /* Exported functions --------------------------------------------------------*/
 void gimbalControlInit(void);

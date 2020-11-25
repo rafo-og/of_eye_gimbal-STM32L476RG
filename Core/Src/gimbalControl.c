@@ -13,10 +13,30 @@
 #define BUFFER_SIZE	10
 
 /* DC PWM default and range values in CNT format*/
-#define MIN_POS		999			// 1 ms
-#define CENTER_POS	1499		// 1.5 ms
-#define MAX_POS		1999		// 2 ms
-#define DELTA_POS	2			// 5us
+#define MIN_POS		3199		// 1 ms
+#define CENTER_POS	4799		// 1.5 ms
+#define MAX_POS		6399		// 2 ms
+#define DELTA_POS	50
+
+/* PID parameters*/
+// PITCH
+#define PITCH_P	0
+#define PITCH_I	0
+#define PITCH_D	0
+// ROLL
+#define ROLL_P	0
+#define ROLL_I	0
+#define ROLL_D	0
+// YAW
+#define YAW_P	0.55
+#define YAW_I	0.001
+#define YAW_D	0.001
+
+#define DELTALIMIT 8
+
+#define PITCH_WINDUP	500
+#define ROLL_WINDUP 	500
+#define YAW_WINDUP 		500
 
 /* Private typedefs --------------------------------------------*/
 typedef enum commandEnum{
@@ -39,19 +59,22 @@ typedef struct{
 }motorPosTypeDef;
 
 /* Private variables -------------------------------------------*/
-char bufferIn[BUFFER_SIZE];
-int i = 0;
 motorPosTypeDef motorPos = { .pitchPos = CENTER_POS, .rollPos = CENTER_POS, .yawPos = CENTER_POS};
 bool pwmEn;
 bool trackingEn;
+
+static int xSum = 0, ySum = 0, rotationSum = 0;
+static int xLast = 0, yLast = 0, rotationLast = 0;
 
 /* Private functions -------------------------------------------*/
 cmdTypeDef decodeCmd(char const * cmdString, int length);
 void enablePWM();
 void disablePWM();
+__STATIC_INLINE void NormalizeRange(int value, int MaxRange, int MinRange);
 
 /**
- * @brief Setting up all the peripherals (UART and TIMER) needed to control de gimbal position
+ * @brief Setting up all the peripherals (UART and TIMER) needed
+ * to control the gimbal position
  */
 void gimbalControlInit(void){
 	// Configure UART2 interrupt to receive data from PC
@@ -89,6 +112,7 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 	}
 	if(strncmp(cmdString, "TROFF\n", length) == 0){
 		trackingEn = false;
+
 		return TRACKING_OFF;
 	}
 
@@ -111,56 +135,110 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 
 	// Up command
 	if(strncmp(cmdString, "UP\n", length) == 0){
-		if(motorPos.pitchPos > MIN_POS) motorPos.pitchPos -= DELTA_POS;
+		motorPos.pitchPos -= DELTA_POS;
+		NormalizeRange(motorPos.pitchPos, MAX_POS, MIN_POS);
 		TIM3->CCR2 = motorPos.pitchPos;
 		return UP;
 	}
 	// Down command
 	if(strncmp(cmdString, "DW\n", length) == 0){
-		if(motorPos.pitchPos < MAX_POS) motorPos.pitchPos += DELTA_POS;
+		motorPos.pitchPos += DELTA_POS;
+		NormalizeRange(motorPos.pitchPos, MAX_POS, MIN_POS);
 		TIM3->CCR2 = motorPos.pitchPos;
 		return DOWN;
 	}
 	// Left command
 	if(strncmp(cmdString, "LF\n", length) == 0){
-		if(motorPos.yawPos > MIN_POS) motorPos.yawPos -= DELTA_POS;
+		motorPos.yawPos -= DELTA_POS;
+		NormalizeRange(motorPos.yawPos, MAX_POS, MIN_POS);
 		TIM3->CCR4 = motorPos.yawPos;
 		return LEFT;
 	}
 	// Right command
 	if(strncmp(cmdString, "RH\n", length) == 0){
-		if(motorPos.yawPos < MAX_POS) motorPos.yawPos += DELTA_POS;
+		motorPos.yawPos += DELTA_POS;
+		NormalizeRange(motorPos.yawPos, MAX_POS, MIN_POS);
 		TIM3->CCR4 = motorPos.yawPos;
 		return RIGHT;
 	}
 
 	// Rotate left command
 	if(strncmp(cmdString, "RLF\n", length) == 0){
-		if(motorPos.rollPos < MAX_POS) motorPos.rollPos += DELTA_POS;
+		motorPos.rollPos += DELTA_POS;
+		NormalizeRange(motorPos.rollPos, MAX_POS, MIN_POS);
 		TIM3->CCR1 = motorPos.rollPos;
 		return ROTATE_LEFT;
 	}
 	// Rotate right command
 	if(strncmp(cmdString, "RRH\n", length) == 0){
-		if(motorPos.rollPos > MIN_POS) motorPos.rollPos -= DELTA_POS;
+		motorPos.rollPos -= DELTA_POS;
+		NormalizeRange(motorPos.rollPos, MAX_POS, MIN_POS);
 		TIM3->CCR1 = motorPos.rollPos;
 		return ROTATE_RIGHT;
 	}
 	return NA;
 }
 
+/**
+ * \brief Implements the control law from the optical flow received as
+ * arguments
+ * @param x	Optical flow value in horizontal direction
+ * @param y Optical flow value in vertical direction
+ * @param rotation	Optical flow value which indicates the rotation
+ */
 void applyControlLaw(int x, int y, int rotation){
+	int deltaPitch, deltaRoll, deltaYaw;
 
 	if(!trackingEn) return;
 
-	if(motorPos.yawPos < MAX_POS && motorPos.yawPos > MIN_POS) motorPos.yawPos += x >> 4;
+	// Integrate values
+	xSum += x;
+	ySum += y;
+	rotationSum += rotation;
+
+	// Integral windup
+	if(abs(ySum) > PITCH_WINDUP) ySum = 0;
+	if(abs(rotationSum) > ROLL_WINDUP) rotationSum = 0;
+	if(abs(xSum) > YAW_WINDUP) xSum = 0;
+
+	// PID implementation
+	deltaYaw = (float)(x * YAW_P) + (float)(xSum * YAW_I) + (float)((x - xLast) * YAW_D);
+	deltaPitch = y * PITCH_P + ySum * PITCH_I + (y - yLast) * PITCH_D;
+	deltaRoll = rotation * ROLL_P + rotationSum *  ROLL_I +
+			(rotation - rotationLast) * ROLL_D;
+
+	// Avoid small changes in computed values
+	if(abs(deltaYaw)>=DELTALIMIT) motorPos.yawPos +=deltaYaw;
+	if(abs(deltaPitch)>=DELTALIMIT) motorPos.pitchPos +=deltaPitch;
+	if(abs(deltaRoll)>=DELTALIMIT) motorPos.rollPos +=deltaRoll;
+
+	// Check the signals are in the proper range
+	NormalizeRange(motorPos.pitchPos, MAX_POS, MIN_POS);
+	NormalizeRange(motorPos.rollPos, MAX_POS, MIN_POS);
+	NormalizeRange(motorPos.yawPos, MAX_POS, MIN_POS);
+
+	// RC control signals generation
+	TIM3->CCR1 = motorPos.rollPos;
+	TIM3->CCR2 = motorPos.pitchPos;
 	TIM3->CCR4 = motorPos.yawPos;
+
+	// Save values to differentiation
+	xLast = x;
+	yLast = y;
+	rotationLast = rotation;
 }
 
+/**
+ * @brief	Check if tracking function is enable/disable
+ * @return	True if the tracking function is enable, False if it is disable
+ */
 bool IsTrackingEnable(){
 	return trackingEn;
 }
 
+/**
+ * @brief	Enable RC (PWM) signal generation
+ */
 void enablePWM(){
 	// Enable output compare OCx channels
 	//SET_BIT(TIM3->CCER, TIM_CCER_CC4E);
@@ -176,6 +254,9 @@ void enablePWM(){
 	pwmEn = true;
 }
 
+/**
+ * @brief	Disable RC (PWM) signal generation
+ */
 void disablePWM(){
 	// Disable output
 	//CLEAR_BIT(TIM3->CCER, TIM_CCER_CC4E);
@@ -195,7 +276,25 @@ void disablePWM(){
 	pwmEn = false;
 }
 
+/**
+ * @brief	Avoid out of range values in RC signals
+ * @param value	Current value of signal
+ * @param MaxRange	Maximum value for signal
+ * @param MinRange	Minimum value for signal
+ */
+void NormalizeRange(int value, int MaxRange, int MinRange){
+	if(value > MaxRange){
+		value = MaxRange;
+	}
+	else if(value < MinRange){
+		value = MinRange;
+	}
+}
+
 void USART2_IRQHandler(void){
+	static char bufferIn[BUFFER_SIZE];
+	static int i = 0;
+
 	if(READ_BIT(USART2->ISR, USART_ISR_ORE)){
 		SET_BIT(USART2->ICR, USART_ICR_ORECF);
 		// Flush all data in USART RX

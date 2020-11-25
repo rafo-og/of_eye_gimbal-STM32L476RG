@@ -10,6 +10,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 #define SWITCH_FRAME_IDX(current, past)	{uint8_t temp; temp = past; past = current; current = temp;}
+#define TIME_TO_POSITION	410		// milliseconds
 
 /* Private typedefs --------------------------------------------*/
 typedef enum adns2610_state{
@@ -26,20 +27,24 @@ bool initialized = false;
 
 /* Private functions -------------------------------------------*/
 void eyes_configureFSM_TIM(void);
+void eyes_configureControl_TIM(void);
 void eyes_FSM(void);
 __STATIC_INLINE void eyes_waitIT(uint32_t Count250ns);
 __STATIC_INLINE void eyes_stopWaitIT();
+__STATIC_INLINE void eyes_waitControlTIM_IT(uint32_t millis);
+__STATIC_INLINE void eyes_stopWaitControlTIM_IT();
 bool eyes_computeIdxFromStatus(PixelStatus* status1, PixelStatus* status2, uint16_t* idx1,  uint16_t* idx2);
 
 /* Exported variables -------------------------------------------*/
 frameStruct frames[2] = {{.header = FRAME_HEADER}, {.header = FRAME_HEADER}};
 
-/** @brief Initialize the
- *
+/**
+ * @brief It initializes and it sets up the system.
  */
 void eyes_init(){
 	// Configure the timer to read the frames continuously
 	eyes_configureFSM_TIM();
+	eyes_configureControl_TIM();
 
 	// Initialize ADNS2610 sensor
 	adns2610_init(ADNS2610_RIGHT);
@@ -58,6 +63,9 @@ void eyes_init(){
 	initialized = true;
 }
 
+/**
+ * @brief It starts the system operation.
+ */
 void eyes_start(){
 
 	if(!initialized) eyes_init();
@@ -66,6 +74,9 @@ void eyes_start(){
 	FSMstate = TRIGGER_FRAME;
 }
 
+/**
+ * It stops the system operation.
+ */
 void eyes_stop(){
 	FSMstate = RESET;
 }
@@ -83,8 +94,8 @@ void eyes_stop(){
  *	-READING_FRAME:		The pixel data is received and stored after the wait of
  *						100us.
  * ------------------------------------------------------------------------------ */
-/** @brief Compute the FSM (Finite State Machine) for control loop
- *
+/**
+ *  @brief Compute the FSM (Finite State Machine) for image acquisition, optical flow computation and control loop.
  */
 void eyes_FSM(void){
 	static uint16_t pixelIdx[2] = { 0 };
@@ -106,6 +117,8 @@ void eyes_FSM(void){
 #endif
 		/* Stop the interrupt timer and reset all the relevant values */
 		eyes_stopWaitIT();
+		eyes_stopWaitControlTIM_IT();
+
 		pixelIdx[0] = pixelIdx[1] = 0;
 		pixelStatus[0] = pixelIdx[1] = 0;
 		firstPixelRead = true;
@@ -117,6 +130,7 @@ void eyes_FSM(void){
 	/* TRIGGER_FRAME state --------------------------------------------------------- */
 	case TRIGGER_FRAME:
 		eyes_stopWaitIT();
+		eyes_stopWaitControlTIM_IT();
 		if(collisionFlag) goto collisionError; else collisionFlag = 1;
 		/* Write pixel data register to reset the HW */
 		adns2610_writeRegister(ADNS2610_RIGHT, ADNS2610_PIXEL_DATA_REG, 0x01);
@@ -241,7 +255,7 @@ void eyes_FSM(void){
 
 		if(IsTrackingEnable()){
 			applyControlLaw(frames[currentFrameIdx].oFFused.x, frames[currentFrameIdx].oFFused.y, frames[currentFrameIdx].oFFused.theta);
-			eyes_waitIT(65535);
+			eyes_waitControlTIM_IT(TIME_TO_POSITION);
 		}
 		else{
 			eyes_waitIT(ADNS2610_TIM_BTW_RD);
@@ -256,6 +270,10 @@ void eyes_FSM(void){
 		while(1);
 }
 
+/**
+ * It sets up a TIMER to wait the required times by the ADNS2610 sensor through an interrupt.
+ * The TIMER pre-scaler is configured to increase its count each 250ns.
+ */
 void eyes_configureFSM_TIM(void){
 	// TIM1 prescalers has been configured to count microseconds
 	uint32_t temp = TIM1->CR1;
@@ -280,6 +298,10 @@ void eyes_configureFSM_TIM(void){
 	NVIC_EnableIRQ(TIM1_UP_TIM16_IRQn);
 }
 
+/**
+ * It sets up the TIMER interval and it starts the count until the interrupt launch.
+ * @param Count250ns	The interval to wait expressed as 250ns multiples
+ */
 void eyes_waitIT(uint32_t Count250ns){
 	// Disable update interrupt generation
 	SET_BIT(TIM1->CR1, TIM_CR1_URS);
@@ -293,11 +315,78 @@ void eyes_waitIT(uint32_t Count250ns){
 	SET_BIT(TIM1->CR1, TIM_CR1_CEN);
 }
 
+/**
+ * It stops the TIMER count to avoid the TIMER continues launching interrupts each configured interval time.
+ */
 void eyes_stopWaitIT(){
 	// Disable and start timer
 	CLEAR_BIT(TIM1->CR1, TIM_CR1_CEN);
 }
 
+/**
+ * It sets up a TIMER to wait the required time to move the platform to the new position through an interrupt.
+ * The TIMER pre-scaler is configured to increase its count each millisecond.
+ */
+void eyes_configureControl_TIM(void){
+	// TIM1 prescalers has been configured to count microseconds
+	uint32_t temp = TIM4->CR1;
+
+	// Disable update interrupt
+	CLEAR_BIT(TIM4->DIER, TIM_DIER_UIE);
+	// Modify CR1 register
+	MODIFY_REG(temp, ~(TIM_CR1_UDIS), TIM_CR1_URS);
+	TIM4->CR1 = temp;
+	// Set interrupt interval
+	TIM4->ARR = 1;
+	// Update the prescaler and counter registers
+	SET_BIT(TIM4->EGR, TIM_EGR_UG);
+	// Clear pending interrupt flag
+	CLEAR_BIT(TIM4->SR, TIM_SR_UIF);
+	// Enable update interrupt generation
+	CLEAR_BIT(TIM4->CR1, TIM_CR1_URS);
+	// Enable update interrupt
+	SET_BIT(TIM4->DIER, TIM_DIER_UIE);
+	// Configure NVIC to handle TIM1 update interrupt
+	NVIC_SetPriority(TIM4_IRQn, 1);
+	NVIC_EnableIRQ(TIM4_IRQn);
+}
+
+/**
+ * It sets up the TIMER interval and it starts the count until the interrupt launch
+ * @param millis	The interval to wait expressed in milliseconds
+ */
+void eyes_waitControlTIM_IT(uint32_t millis){
+	// Disable update interrupt generation
+	SET_BIT(TIM4->CR1, TIM_CR1_URS);
+	// Set time to wait
+	TIM4->ARR = millis;
+	// Update the prescaler and counter registers
+	SET_BIT(TIM4->EGR, TIM_EGR_UG);
+	// Enable update interrupt generation
+	CLEAR_BIT(TIM4->CR1, TIM_CR1_URS);
+	// Enable and start timer
+	SET_BIT(TIM4->CR1, TIM_CR1_CEN);
+}
+
+/**
+ * It stops the TIMER count to avoid the TIMER continues launching interrupts each configured interval time.
+ */
+void eyes_stopWaitControlTIM_IT(){
+	// Disable and start timer
+	CLEAR_BIT(TIM4->CR1, TIM_CR1_CEN);
+}
+
+/**
+ * It computes the next acquired pixel index:
+ * 		- If the status is good, the index is increased by one.
+ * 		- If global fault is detected the index is reset to zero.
+ * 		- If local fault is detected the index isn't increased.
+ * @param status1	Pointer to pixel status type from one of the two devices
+ * @param status2	Pointer to pixel status type pixel status from one of the two devices
+ * @param idx1		Pointer to index for the next acquired pixel
+ * @param idx2		Poniter to index for the next acquired pixel
+ * @return	True if pixels status are good, false if not
+ */
 bool eyes_computeIdxFromStatus(PixelStatus* status1, PixelStatus* status2, uint16_t* idx1,  uint16_t* idx2){
 
 	if((*status1 == VALID_SOF) && (*idx1 == 0)){
@@ -330,6 +419,16 @@ void TIM1_UP_TIM16_IRQHandler(void){
 	if(READ_BIT(TIM1->SR, TIM_SR_UIF)){
 		// Clear pending interrupt flag
 		CLEAR_BIT(TIM1->SR, TIM_SR_UIF);
+		// Process FSM
+		eyes_FSM();
+	}
+}
+
+void TIM4_IRQHandler(void){
+	// If the interrupt flag is enabled
+	if(READ_BIT(TIM4->SR, TIM_SR_UIF)){
+		// Clear pending interrupt flag
+		CLEAR_BIT(TIM4->SR, TIM_SR_UIF);
 		// Process FSM
 		eyes_FSM();
 	}
