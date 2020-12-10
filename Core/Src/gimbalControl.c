@@ -16,7 +16,8 @@
 #define MIN_POS		3199		// 1 ms
 #define CENTER_POS	4799		// 1.5 ms
 #define MAX_POS		6399		// 2 ms
-#define DELTA_POS	10
+#define DELTA_POS		100
+#define CALDELTA_POS	5
 
 /* PID parameters*/
 // PITCH
@@ -32,7 +33,7 @@
 #define YAW_I	0.01
 #define YAW_D	0
 
-#define DELTALIMIT 5
+#define DELTALIMIT 		50
 
 #define PITCH_WINDUP	500
 #define ROLL_WINDUP 	500
@@ -49,6 +50,8 @@ typedef enum commandEnum{
 	CENTER,
 	TRACKING_ON,
 	TRACKING_OFF,
+	CALIBRATION_MODE_ON,
+	CALIBRATION_MODE_OFF,
 	NA
 } cmdTypeDef;
 
@@ -62,6 +65,7 @@ typedef struct{
 motorPosTypeDef motorPos = { .pitchPos = CENTER_POS, .rollPos = CENTER_POS, .yawPos = CENTER_POS};
 bool pwmEn;
 bool trackingEn;
+bool calibrationEn;
 
 static int xSum = 0, ySum = 0, rotationSum = 0;
 static int xLast = 0, yLast = 0, rotationLast = 0;
@@ -85,6 +89,9 @@ void gimbalControlInit(void){
 
 	// Flag to know if tracking function is enable/disable
 	trackingEn = false;
+
+	// Calibration not active
+	calibrationEn = false;
 }
 
 /* --------------------------------------------------
@@ -116,6 +123,16 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 		return TRACKING_OFF;
 	}
 
+	if(strncmp(cmdString, "CALON\n", length) == 0){
+		calibrationEn = true;
+		return CALIBRATION_MODE_ON;
+	}
+
+	if(strncmp(cmdString, "CALOFF\n", length) == 0){
+		calibrationEn = false;
+		return CALIBRATION_MODE_OFF;
+	}
+
 	// Tracking enable so It isn't able to perform any command
 	if(trackingEn) return NA;
 
@@ -135,28 +152,40 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 
 	// Up command
 	if(strncmp(cmdString, "UP\n", length) == 0){
-		motorPos.pitchPos -= DELTA_POS;
+
+		if(!calibrationEn) motorPos.pitchPos -= DELTA_POS;
+		else motorPos.pitchPos -= CALDELTA_POS;
+
 		NormalizeRange(motorPos.pitchPos, MAX_POS, MIN_POS);
 		TIM3->CCR2 = motorPos.pitchPos;
 		return UP;
 	}
 	// Down command
 	if(strncmp(cmdString, "DW\n", length) == 0){
-		motorPos.pitchPos += DELTA_POS;
+
+		if(!calibrationEn) motorPos.pitchPos += DELTA_POS;
+		else	motorPos.pitchPos += CALDELTA_POS;
+
 		NormalizeRange(motorPos.pitchPos, MAX_POS, MIN_POS);
 		TIM3->CCR2 = motorPos.pitchPos;
 		return DOWN;
 	}
 	// Left command
 	if(strncmp(cmdString, "LF\n", length) == 0){
-		motorPos.yawPos -= DELTA_POS;
+
+		if(!calibrationEn) motorPos.yawPos -= DELTA_POS;
+		else motorPos.yawPos -= CALDELTA_POS;
+
 		NormalizeRange(motorPos.yawPos, MAX_POS, MIN_POS);
 		TIM3->CCR4 = motorPos.yawPos;
 		return LEFT;
 	}
 	// Right command
 	if(strncmp(cmdString, "RH\n", length) == 0){
-		motorPos.yawPos += DELTA_POS;
+
+		if(!calibrationEn) motorPos.yawPos += DELTA_POS;
+		else motorPos.yawPos += CALDELTA_POS;
+
 		NormalizeRange(motorPos.yawPos, MAX_POS, MIN_POS);
 		TIM3->CCR4 = motorPos.yawPos;
 		return RIGHT;
@@ -164,14 +193,20 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 
 	// Rotate left command
 	if(strncmp(cmdString, "RLF\n", length) == 0){
-		motorPos.rollPos += DELTA_POS;
+
+		if(!calibrationEn) motorPos.rollPos += DELTA_POS;
+		else motorPos.rollPos += CALDELTA_POS;
+
 		NormalizeRange(motorPos.rollPos, MAX_POS, MIN_POS);
 		TIM3->CCR1 = motorPos.rollPos;
 		return ROTATE_LEFT;
 	}
 	// Rotate right command
 	if(strncmp(cmdString, "RRH\n", length) == 0){
-		motorPos.rollPos -= DELTA_POS;
+
+		if(!calibrationEn) motorPos.rollPos -= DELTA_POS;
+		else motorPos.rollPos -= CALDELTA_POS;
+
 		NormalizeRange(motorPos.rollPos, MAX_POS, MIN_POS);
 		TIM3->CCR1 = motorPos.rollPos;
 		return ROTATE_RIGHT;
