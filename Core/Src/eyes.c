@@ -10,7 +10,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 #define SWITCH_FRAME_IDX(current, past)	{uint8_t temp; temp = past; past = current; current = temp;}
-#define TIME_TO_POSITION	410		// milliseconds
+#define TIME_TO_POSITION	350		// milliseconds
 
 /* Private typedefs --------------------------------------------*/
 typedef enum adns2610_state{

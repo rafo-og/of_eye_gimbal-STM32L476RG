@@ -16,7 +16,7 @@
 #define MIN_POS		3199		// 1 ms
 #define CENTER_POS	4799		// 1.5 ms
 #define MAX_POS		6399		// 2 ms
-#define DELTA_POS	50
+#define DELTA_POS	10
 
 /* PID parameters*/
 // PITCH
@@ -28,11 +28,11 @@
 #define ROLL_I	0
 #define ROLL_D	0
 // YAW
-#define YAW_P	0.55
-#define YAW_I	0.001
-#define YAW_D	0.001
+#define YAW_P	0.3
+#define YAW_I	0.01
+#define YAW_D	0
 
-#define DELTALIMIT 8
+#define DELTALIMIT 5
 
 #define PITCH_WINDUP	500
 #define ROLL_WINDUP 	500

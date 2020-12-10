@@ -65,7 +65,7 @@ void OF_Compute(Device dev, int32_t* ofX, int32_t* ofY){
 
 	den = A[dev] * D[dev] - B[dev] * B[dev];
 
-	if(den > 0){
+	if(den != 0){
 		num = (C[dev]*D[dev]) - (B[dev]*E[dev]);
 		*ofX = (num << bitsOfResolution)  / den;
 		num = (A[dev]*E[dev]) - (B[dev]*C[dev]);
