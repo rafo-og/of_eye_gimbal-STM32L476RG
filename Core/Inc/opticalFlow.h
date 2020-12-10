@@ -14,18 +14,6 @@
 
 /* Private constant ----------------------------------------------------------*/
 
-/* Exported typedefs ----------------------------------------------------------*/
-typedef struct __attribute__((__packed__)){
-	int32_t x;
-	int32_t y;
-} optical2DFlowStruct;
-
-typedef struct __attribute__((__packed__)){
-	int32_t x;
-	int32_t y;
-	int32_t theta;
-} optical2DandRotateFlowStruct;
-
 /* Exported functions --------------------------------------------------------*/
 void OF_ResetCoefficients();
 void OF_ComputeCoefficients(Device dev, uint8_t currentFrame[], uint8_t lastFrame[], int32_t idx);

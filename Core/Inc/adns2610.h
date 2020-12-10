@@ -9,6 +9,7 @@
 #define INC_ADNS2610_H_
 
 #include "main.h"
+#include "commonTypes.h"
 
 /* Exported constants --------------------------------------------------------*/
 /** @defgroup ADNS2610 constants
@@ -35,8 +36,6 @@
 /** @defgroup ADNS2610 internal registers and constants
  * @{
  */
-// Pixel quantity in an ADNS2610 frame
-#define PIXEL_QTY		324
 
 /** @defgroup ADNS2610 internal registers addresses
  * @{
@@ -122,8 +121,6 @@ typedef enum{
 	VALID,				//!< VALID: VALID bit is set
 	NON_VALID			//!< NON_VALID: VALID bit is cleared
 } PixelStatus;
-
-typedef uint8_t pixelTypeDef;
 
 /* Exported variables ---------------------------------------------------------*/
 

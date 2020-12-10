@@ -10,7 +10,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 #define SWITCH_FRAME_IDX(current, past)	{uint8_t temp; temp = past; past = current; current = temp;}
-#define TIME_TO_POSITION	350		// milliseconds
+#define TIME_TO_POSITION	450		// milliseconds
 
 /* Private typedefs --------------------------------------------*/
 typedef enum adns2610_state{
@@ -254,7 +254,7 @@ void eyes_FSM(void){
 		FSMstate = TRIGGER_FRAME;
 
 		if(IsTrackingEnable()){
-			applyControlLaw(frames[currentFrameIdx].oFFused.x, frames[currentFrameIdx].oFFused.y, frames[currentFrameIdx].oFFused.theta);
+			applyControlLaw(&frames[currentFrameIdx], ALL);
 			eyes_waitControlTIM_IT(TIME_TO_POSITION);
 		}
 		else{
