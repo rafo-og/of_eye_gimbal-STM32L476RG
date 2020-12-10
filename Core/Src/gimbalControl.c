@@ -16,8 +16,8 @@
 #define MIN_POS		3199		// 1 ms
 #define CENTER_POS	4799		// 1.5 ms
 #define MAX_POS		6399		// 2 ms
-#define DELTA_POS		100
-#define CALDELTA_POS	5
+#define DELTA_POS		70
+#define CALDELTA_POS	10
 
 /* PID parameters*/
 // PITCH
@@ -29,15 +29,15 @@
 #define ROLL_I	0
 #define ROLL_D	0
 // YAW
-#define YAW_P	0.3
-#define YAW_I	0.01
+#define YAW_P	0.25
+#define YAW_I	0
 #define YAW_D	0
 
-#define DELTALIMIT 		50
+#define DELTALIMIT 		30
 
-#define PITCH_WINDUP	500
-#define ROLL_WINDUP 	500
-#define YAW_WINDUP 		500
+#define PITCH_WINDUP	300
+#define ROLL_WINDUP 	300
+#define YAW_WINDUP 		300
 
 /* Private typedefs --------------------------------------------*/
 typedef enum commandEnum{
@@ -75,6 +75,7 @@ cmdTypeDef decodeCmd(char const * cmdString, int length);
 void enablePWM();
 void disablePWM();
 __STATIC_INLINE void NormalizeRange(int value, int MaxRange, int MinRange);
+__STATIC_INLINE void RemoveNoise(int * x, int *y, int * rotation);
 
 /**
  * @brief Setting up all the peripherals (UART and TIMER) needed
@@ -221,12 +222,33 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
  * @param y Optical flow value in vertical direction
  * @param rotation	Optical flow value which indicates the rotation
  */
-void applyControlLaw(int x, int y, int rotation){
+void applyControlLaw(frameStruct * frame, ControlLawModeTypeDef mode){
+	int x, y, rotation;
 	int deltaPitch, deltaRoll, deltaYaw;
 
 	if(!trackingEn) return;
 
 	// Integrate values
+	switch(mode){
+	case LEFT_ONLY:
+		x = frame->oFLeft.x;
+		y = frame->oFLeft.y;
+		rotation = 0;
+		break;
+	case RIGHT_ONLY:
+		x = frame->oFRight.x;
+		y = frame->oFRight.y;
+		rotation = 0;
+		break;
+	case ALL:
+		x = frame->oFFused.x;
+		y = frame->oFFused.y;
+		rotation = frame->oFFused.theta;
+		break;
+	}
+
+	RemoveNoise(&x, &y, &rotation);
+
 	xSum += x;
 	ySum += y;
 	rotationSum += rotation;
@@ -243,9 +265,12 @@ void applyControlLaw(int x, int y, int rotation){
 			(rotation - rotationLast) * ROLL_D;
 
 	// Avoid small changes in computed values
-	if(abs(deltaYaw)>=DELTALIMIT) motorPos.yawPos +=deltaYaw;
-	if(abs(deltaPitch)>=DELTALIMIT) motorPos.pitchPos +=deltaPitch;
-	if(abs(deltaRoll)>=DELTALIMIT) motorPos.rollPos +=deltaRoll;
+//	if(abs(deltaYaw)>=DELTALIMIT) motorPos.yawPos +=deltaYaw;
+//	if(abs(deltaPitch)>=DELTALIMIT) motorPos.pitchPos +=deltaPitch;
+//	if(abs(deltaRoll)>=DELTALIMIT) motorPos.rollPos +=deltaRoll;
+	motorPos.yawPos +=deltaYaw;
+	motorPos.pitchPos +=deltaPitch;
+	motorPos.rollPos +=deltaRoll;
 
 	// Check the signals are in the proper range
 	NormalizeRange(motorPos.pitchPos, MAX_POS, MIN_POS);
@@ -324,6 +349,18 @@ void NormalizeRange(int value, int MaxRange, int MinRange){
 	else if(value < MinRange){
 		value = MinRange;
 	}
+}
+
+/**
+ * Remove signal noise in OF signal
+ * @param y
+ * @param y
+ * @param rotation
+ */
+void RemoveNoise(int * x, int *y, int * rotation){
+	if(abs(*x)<=DELTALIMIT) *x=0;
+	if(abs(*y)<=DELTALIMIT) *y=0;
+	if(abs(*rotation)<=DELTALIMIT) *rotation=0;
 }
 
 void USART2_IRQHandler(void){
