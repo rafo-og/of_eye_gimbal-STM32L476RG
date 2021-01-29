@@ -25,5 +25,6 @@ typedef enum ControlLawMode{
 void gimbalControlInit(void);
 void applyControlLaw(frameStruct * frame, ControlLawModeTypeDef mode);
 bool IsTrackingEnable();
+bool IsCalibrationModeEnable();
 
 #endif /* INC_GIMBALCONTROL_H_ */

@@ -24,6 +24,7 @@ typedef enum adns2610_state{
 /* Private variables -------------------------------------------*/
 static eyes_FSMstate_TypeDef FSMstate;
 bool initialized = false;
+pixelTypeDef refFrameCal[2][PIXEL_QTY] = {0};
 
 /* Private functions -------------------------------------------*/
 void eyes_configureFSM_TIM(void);
@@ -34,6 +35,7 @@ __STATIC_INLINE void eyes_stopWaitIT();
 __STATIC_INLINE void eyes_waitControlTIM_IT(uint32_t millis);
 __STATIC_INLINE void eyes_stopWaitControlTIM_IT();
 bool eyes_computeIdxFromStatus(PixelStatus* status1, PixelStatus* status2, uint16_t* idx1,  uint16_t* idx2);
+void SetRefFrame(pixelTypeDef* srcFrame, pixelTypeDef* dstFrame, int length);
 
 /* Exported variables -------------------------------------------*/
 frameStruct frames[2] = {{.header = FRAME_HEADER}, {.header = FRAME_HEADER}};
@@ -106,6 +108,8 @@ void eyes_FSM(void){
 	static uint8_t collisionFlag = 0;
 	static uint16_t errorCounter = 0;
 	static uint8_t seqTemp;
+
+	static bool refSet = false;
 
 	switch(FSMstate){
 	/* SENSOR_RESET state --------------------------------------------------------- */
@@ -181,10 +185,18 @@ void eyes_FSM(void){
 					errorCounter++;
 				}
 				if(!firstFrameRead){
-					OF_ComputeCoefficients(ADNS2610_RIGHT, frames[currentFrameIdx].frame[ADNS2610_RIGHT], frames[lastFrameIdx].frame[ADNS2610_RIGHT], pixelIdx[ADNS2610_RIGHT]);
+					if(!IsCalibrationModeEnable() || !refSet){
+						OF_ComputeCoefficients(ADNS2610_RIGHT, frames[currentFrameIdx].frame[ADNS2610_RIGHT], frames[lastFrameIdx].frame[ADNS2610_RIGHT], pixelIdx[ADNS2610_RIGHT]);
 #if SECOND_SENSOR_IMPLEMENTED
-					OF_ComputeCoefficients(ADNS2610_LEFT, frames[currentFrameIdx].frame[ADNS2610_LEFT], frames[lastFrameIdx].frame[ADNS2610_LEFT], pixelIdx[ADNS2610_LEFT]);
+						OF_ComputeCoefficients(ADNS2610_LEFT, frames[currentFrameIdx].frame[ADNS2610_LEFT], frames[lastFrameIdx].frame[ADNS2610_LEFT], pixelIdx[ADNS2610_LEFT]);
 #endif
+					}
+					else{
+						OF_ComputeCoefficients(ADNS2610_RIGHT, frames[currentFrameIdx].frame[ADNS2610_RIGHT], refFrameCal[ADNS2610_RIGHT], pixelIdx[ADNS2610_RIGHT]);
+#if SECOND_SENSOR_IMPLEMENTED
+						OF_ComputeCoefficients(ADNS2610_LEFT, frames[currentFrameIdx].frame[ADNS2610_LEFT], refFrameCal[ADNS2610_LEFT], pixelIdx[ADNS2610_LEFT]);
+#endif
+					}
 				}
 			}
 			else{
@@ -249,11 +261,21 @@ void eyes_FSM(void){
 			OF_ComputeFused(&frames[currentFrameIdx].oFRight, &frames[currentFrameIdx].oFLeft, &frames[currentFrameIdx].oFFused);
 #endif
 		}
+
+		/* Copy current frames to reference frame */
+		if(IsCalibrationModeEnable() && !refSet){
+			SetRefFrame(frames->frame[ADNS2610_RIGHT], refFrameCal[ADNS2610_RIGHT], 2*PIXEL_QTY);
+			refSet = true;
+		}
+		else if(!IsCalibrationModeEnable()){
+			refSet = false;
+		}
+
 		/* Switch the frame structures to store the new frame in the "oldest" data buffer */
 		SWITCH_FRAME_IDX(currentFrameIdx, lastFrameIdx);
 		FSMstate = TRIGGER_FRAME;
 
-		if(IsTrackingEnable()){
+		if(IsTrackingEnable() && !IsCalibrationModeEnable()){
 			applyControlLaw(&frames[currentFrameIdx], ALL);
 			eyes_waitControlTIM_IT(TIME_TO_POSITION);
 		}
@@ -412,6 +434,18 @@ bool eyes_computeIdxFromStatus(PixelStatus* status1, PixelStatus* status2, uint1
 	}
 #endif
 	return true;
+}
+
+void SetRefFrame(pixelTypeDef* srcFrame, pixelTypeDef* dstFrame, int length){
+
+	int i = 0;
+
+	while(i < length){
+		*dstFrame = *srcFrame;
+		dstFrame++;
+		srcFrame++;
+		i++;
+	}
 }
 
 void TIM1_UP_TIM16_IRQHandler(void){

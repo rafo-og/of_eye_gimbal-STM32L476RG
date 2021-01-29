@@ -110,6 +110,8 @@ void gimbalControlInit(void){
  */
 cmdTypeDef decodeCmd(char const * cmdString, int length){
 
+	static int deltaPos = DELTA_POS;
+
 	// Enable PWM if it was disabled
 	if(!pwmEn)	enablePWM();
 
@@ -120,17 +122,18 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 	}
 	if(strncmp(cmdString, "TROFF\n", length) == 0){
 		trackingEn = false;
-
 		return TRACKING_OFF;
 	}
 
 	if(strncmp(cmdString, "CALON\n", length) == 0){
 		calibrationEn = true;
+		deltaPos = CALDELTA_POS;
 		return CALIBRATION_MODE_ON;
 	}
 
 	if(strncmp(cmdString, "CALOFF\n", length) == 0){
 		calibrationEn = false;
+		deltaPos = DELTA_POS;
 		return CALIBRATION_MODE_OFF;
 	}
 
@@ -154,8 +157,9 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 	// Up command
 	if(strncmp(cmdString, "UP\n", length) == 0){
 
-		if(!calibrationEn) motorPos.pitchPos -= DELTA_POS;
-		else motorPos.pitchPos -= CALDELTA_POS;
+//		if(!calibrationEn) motorPos.pitchPos -= DELTA_POS;
+//		else motorPos.pitchPos -= CALDELTA_POS;
+		motorPos.pitchPos -= deltaPos;
 
 		NormalizeRange(motorPos.pitchPos, MAX_POS, MIN_POS);
 		TIM3->CCR2 = motorPos.pitchPos;
@@ -164,8 +168,9 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 	// Down command
 	if(strncmp(cmdString, "DW\n", length) == 0){
 
-		if(!calibrationEn) motorPos.pitchPos += DELTA_POS;
-		else	motorPos.pitchPos += CALDELTA_POS;
+//		if(!calibrationEn) motorPos.pitchPos += DELTA_POS;
+//		else	motorPos.pitchPos += CALDELTA_POS;
+		motorPos.pitchPos += deltaPos;
 
 		NormalizeRange(motorPos.pitchPos, MAX_POS, MIN_POS);
 		TIM3->CCR2 = motorPos.pitchPos;
@@ -174,8 +179,9 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 	// Left command
 	if(strncmp(cmdString, "LF\n", length) == 0){
 
-		if(!calibrationEn) motorPos.yawPos -= DELTA_POS;
-		else motorPos.yawPos -= CALDELTA_POS;
+//		if(!calibrationEn) motorPos.yawPos -= DELTA_POS;
+//		else motorPos.yawPos -= CALDELTA_POS;
+		motorPos.yawPos -= deltaPos;
 
 		NormalizeRange(motorPos.yawPos, MAX_POS, MIN_POS);
 		TIM3->CCR4 = motorPos.yawPos;
@@ -184,8 +190,9 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 	// Right command
 	if(strncmp(cmdString, "RH\n", length) == 0){
 
-		if(!calibrationEn) motorPos.yawPos += DELTA_POS;
-		else motorPos.yawPos += CALDELTA_POS;
+//		if(!calibrationEn) motorPos.yawPos += DELTA_POS;
+//		else motorPos.yawPos += CALDELTA_POS;
+		motorPos.yawPos += deltaPos;
 
 		NormalizeRange(motorPos.yawPos, MAX_POS, MIN_POS);
 		TIM3->CCR4 = motorPos.yawPos;
@@ -195,8 +202,9 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 	// Rotate left command
 	if(strncmp(cmdString, "RLF\n", length) == 0){
 
-		if(!calibrationEn) motorPos.rollPos += DELTA_POS;
-		else motorPos.rollPos += CALDELTA_POS;
+//		if(!calibrationEn) motorPos.rollPos += DELTA_POS;
+//		else motorPos.rollPos += CALDELTA_POS;
+		motorPos.rollPos += deltaPos;
 
 		NormalizeRange(motorPos.rollPos, MAX_POS, MIN_POS);
 		TIM3->CCR1 = motorPos.rollPos;
@@ -205,8 +213,9 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 	// Rotate right command
 	if(strncmp(cmdString, "RRH\n", length) == 0){
 
-		if(!calibrationEn) motorPos.rollPos -= DELTA_POS;
-		else motorPos.rollPos -= CALDELTA_POS;
+//		if(!calibrationEn) motorPos.rollPos -= DELTA_POS;
+//		else motorPos.rollPos -= CALDELTA_POS;
+		motorPos.rollPos -= deltaPos;
 
 		NormalizeRange(motorPos.rollPos, MAX_POS, MIN_POS);
 		TIM3->CCR1 = motorPos.rollPos;
@@ -294,6 +303,14 @@ void applyControlLaw(frameStruct * frame, ControlLawModeTypeDef mode){
  */
 bool IsTrackingEnable(){
 	return trackingEn;
+}
+
+/**
+ * @brief	Check if calibration mode is enable/disable
+ * @return	True if the calibration function is enable, False if it is disable
+ */
+bool IsCalibrationModeEnable(){
+	return calibrationEn;
 }
 
 /**
