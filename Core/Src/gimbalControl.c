@@ -18,6 +18,7 @@
 #define MAX_POS		6399		// 2 ms
 #define DELTA_POS		70
 #define CALDELTA_POS	10
+#define TESTBENCH_POS	5
 
 /* PID parameters*/
 // PITCH
@@ -52,6 +53,8 @@ typedef enum commandEnum{
 	TRACKING_OFF,
 	CALIBRATION_MODE_ON,
 	CALIBRATION_MODE_OFF,
+	TESTBENCH_ON,
+	TESTBENCH_OFF,
 	NA
 } cmdTypeDef;
 
@@ -135,6 +138,16 @@ cmdTypeDef decodeCmd(char const * cmdString, int length){
 		calibrationEn = false;
 		deltaPos = DELTA_POS;
 		return CALIBRATION_MODE_OFF;
+	}
+
+	if(strncmp(cmdString, "TESTON\n", length) == 0){
+		deltaPos = TESTBENCH_POS;
+		return TESTBENCH_ON;
+	}
+
+	if(strncmp(cmdString, "TESTOFF\n", length) == 0){
+		deltaPos = calibrationEn ? CALDELTA_POS : DELTA_POS;
+		return TESTBENCH_OFF;
 	}
 
 	// Tracking enable so It isn't able to perform any command
