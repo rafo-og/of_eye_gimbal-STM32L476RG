@@ -24,7 +24,7 @@ typedef enum adns2610_state{
 /* Private variables -------------------------------------------*/
 static eyes_FSMstate_TypeDef FSMstate;
 bool initialized = false;
-pixelTypeDef refFrameCal[2][PIXEL_QTY] = {0};
+pixelTypeDef __attribute__((__packed__)) refFrameCal[2][PIXEL_QTY] = {0};
 
 /* Private functions -------------------------------------------*/
 void eyes_configureFSM_TIM(void);

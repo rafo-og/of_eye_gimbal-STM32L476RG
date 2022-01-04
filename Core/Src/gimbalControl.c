@@ -18,7 +18,7 @@
 #define MAX_POS		6399		// 2 ms
 #define DELTA_POS		70
 #define CALDELTA_POS	10
-#define TESTBENCH_POS	5
+#define TESTBENCH_POS	10
 
 /* PID parameters*/
 // PITCH
