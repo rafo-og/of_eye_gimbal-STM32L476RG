@@ -2,7 +2,9 @@
  * adns-2610.h
  *
  *  Created on: Sep 14, 2020
- *      Author: deros
+ *      Author: Rafael de la Rosa Vidal
+ * 
+ *  This code is licensed under the GNU v2.0 license
  */
 
 #ifndef INC_ADNS2610_H_

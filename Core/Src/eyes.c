@@ -2,7 +2,9 @@
  * eyes.c
  *
  *  Created on: 18 sept. 2020
- *      Author: deros
+ *      Author: Rafael de la Rosa Vidal
+ * 
+ *  This code is licensed under the GNU v2.0 license
  */
 
 /* Private includes ----------------------------------------------------------*/

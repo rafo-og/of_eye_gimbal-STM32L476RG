@@ -2,7 +2,9 @@
  * gimbalControl.h
  *
  *  Created on: 27 oct. 2020
- *      Author: deros
+ *      Author: Rafael de la Rosa Vidal
+ * 
+ *  This code is licensed under the GNU v2.0 license
  */
 
 #ifndef INC_GIMBALCONTROL_H_

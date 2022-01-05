@@ -2,7 +2,9 @@
  * commonTypes.h
  *
  *  Created on: 10 dic. 2020
- *      Author: deros
+ *      Author: Rafael de la Rosa Vidal
+ * 
+ *  This code is licensed under the GNU v2.0 license
  */
 
 #ifndef INC_COMMONTYPES_H_
